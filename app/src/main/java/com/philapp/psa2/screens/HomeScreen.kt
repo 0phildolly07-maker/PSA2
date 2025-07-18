@@ -8,6 +8,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -17,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -24,24 +28,36 @@ import com.philapp.psa2.viewmodel.SearchViewModel
 import com.philapp.psa2.model.SearchState
 import com.philapp.psa2.model.Service
 import androidx.core.content.ContextCompat
+import com.philapp.psa2.model.AreaList
 
 enum class SupportType(val title: String, val description: String) {
     PEER_SUPPORT("Peer Support/Groups", "Connect with others who share similar experiences"),
     SOCIAL("Social Activities", "Join community groups and recreational activities"),
     MENTAL_HEALTH("Mental Health Support", "Access counseling and support services"),
+    SPORT_AND_FITNESS("Sport & Fitness", "Join sports activities and fitness programs"),
     EMPLOYMENT("Employment & Volunteering", "Find work opportunities and volunteer positions"),
     EDUCATION("Education & Training", "Discover courses and skill development programs"),
-    PRACTICAL("Practical Support", "Get help with daily needs and resources")
+    PRACTICAL("Practical Support", "Get help with daily needs and resources"),
+    FOOD_BANKS("Food Banks", "Access emergency food support and essential supplies"),
+    COMMUNITY_INTEREST_GROUPS("Community Interest Groups", "Join hobby and interest-based groups");
 }
 
-private val Lancashire_Areas = listOf(
-    "Accrington",
-    "Bacup",
-    "Blackburn",
-    "Burnley",
-    "Nelson",
-    "Rawtenstall"
-).sorted() // Keep the list alphabetically sorted
+// Mapping function to convert SupportType to ServiceType for navigation
+fun SupportType.toServiceType(): String {
+    return when (this) {
+        SupportType.PEER_SUPPORT -> "PEER_SUPPORT"
+        SupportType.SOCIAL -> "SOCIAL"
+        SupportType.MENTAL_HEALTH -> "MENTAL_HEALTH"
+        SupportType.SPORT_AND_FITNESS -> "SPORT_AND_FITNESS"
+        SupportType.EMPLOYMENT -> "EMPLOYMENT"
+        SupportType.EDUCATION -> "EDUCATION"
+        SupportType.PRACTICAL -> "PRACTICAL"
+        SupportType.FOOD_BANKS -> "FOOD_BANKS"
+        SupportType.COMMUNITY_INTEREST_GROUPS -> "COMMUNITY_INTEREST_GROUPS"
+    }
+}
+
+// Remove the local Lancashire_Areas list since we're now using the shared one
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,8 +68,6 @@ fun HomeScreen(
     var selectedType by remember { mutableStateOf<SupportType?>(null) }
     var selectedLocation by remember { mutableStateOf("") }
     var showLocationInput by remember { mutableStateOf(false) }
-    var customSearch by remember { mutableStateOf("") }
-    var isOtherSelected by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
     val searchState = searchViewModel.searchState.value
     val context = LocalContext.current
@@ -100,8 +114,7 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp)
-                .verticalScroll(scrollState),
+                .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Header
@@ -113,85 +126,42 @@ fun HomeScreen(
             )
 
             if (!showLocationInput) {
-                // Support Type Selection
-                SupportType.values().forEach { type ->
-                    SupportTypeCard(
-                        type = type,
-                        isSelected = selectedType == type && !isOtherSelected,
-                        onClick = {
-                            selectedType = type
-                            isOtherSelected = false
-                            showLocationInput = true
-                            customSearch = ""
-                        }
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
-
-                // Other Option Card
-                Card(
-                    onClick = {
-                        isOtherSelected = true
-                        selectedType = null
-                    },
+                // Support Type Selection in 2 columns
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (isOtherSelected) 
-                            MaterialTheme.colorScheme.primaryContainer 
-                        else 
-                            MaterialTheme.colorScheme.surface
-                    )
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp)
-                    ) {
-                        Text(
-                            text = "Other",
-                            style = MaterialTheme.typography.titleLarge
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "Search for specific activities or services",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        
-                        if (isOtherSelected) {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            OutlinedTextField(
-                                value = customSearch,
-                                onValueChange = { customSearch = it },
-                                label = { Text("What are you looking for?") },
-                                placeholder = { Text("e.g., Walking, Music, Arts and Crafts") },
-                                modifier = Modifier.fillMaxWidth(),
-                                singleLine = true
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Button(
-                                onClick = { showLocationInput = true },
-                                enabled = customSearch.isNotBlank(),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text("Next")
+                    items(SupportType.values()) { type ->
+                        SupportTypeCard(
+                            type = type,
+                            isSelected = selectedType == type,
+                            onClick = {
+                                selectedType = type
+                                showLocationInput = true
                             }
-                        }
+                        )
+                    }
+                    
+                    // Add "Other" option to the grid
+                    item {
+                        OtherOptionCard(
+                            isSelected = false,
+                            onClick = {
+                                navController.navigate("custom_search")
+                            }
+                        )
                     }
                 }
             } else {
                 // Location Input Screen
-                if (isOtherSelected) {
+                selectedType?.let { type ->
                     Text(
-                        text = "Looking for: $customSearch",
+                        text = "Selected: ${type.title}",
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
-                } else {
-                    selectedType?.let { type ->
-                        Text(
-                            text = "Selected: ${type.title}",
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.padding(bottom = 16.dp)
-                        )
-                    }
                 }
 
                 LocationSelector(
@@ -224,12 +194,8 @@ fun HomeScreen(
 
                     Button(
                         onClick = {
-                            if (isOtherSelected) {
-                                navController.navigate("results/custom/$customSearch/$selectedLocation")
-                            } else {
-                                selectedType?.let { type ->
-                                    navController.navigate("results/${type.name}/$selectedLocation")
-                                }
+                            selectedType?.let { type ->
+                                navController.navigate("results/${type.toServiceType()}/$selectedLocation")
                             }
                         },
                         enabled = selectedLocation.isNotBlank(),
@@ -254,7 +220,9 @@ private fun SupportTypeCard(
 ) {
     Card(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(120.dp), // Fixed height for uniform appearance
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected) 
                 MaterialTheme.colorScheme.primaryContainer 
@@ -263,16 +231,62 @@ private fun SupportTypeCard(
         )
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(12.dp),
+            verticalArrangement = Arrangement.Center
         ) {
             Text(
                 text = type.title,
-                style = MaterialTheme.typography.titleLarge
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = type.description,
-                style = MaterialTheme.typography.bodyMedium
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun OtherOptionCard(
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(120.dp), // Fixed height for uniform appearance
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected) 
+                MaterialTheme.colorScheme.primaryContainer 
+            else 
+                MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(12.dp),
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = "Other",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Search for specific activities or services",
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
@@ -308,7 +322,7 @@ private fun LocationSelector(
             expanded = expanded,
             onDismissRequest = { expanded = false }
         ) {
-            Lancashire_Areas.forEach { area ->
+            AreaList.Lancashire_Areas.forEach { area ->
                 DropdownMenuItem(
                     text = { Text(area) },
                     onClick = {

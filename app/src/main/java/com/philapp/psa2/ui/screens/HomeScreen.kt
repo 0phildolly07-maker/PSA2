@@ -3,6 +3,9 @@ package com.philapp.psa2.ui.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -115,14 +118,27 @@ fun HomeScreen(
                     )
                 }
             } else {
-                items(ServiceType.values()) { type ->
-                    ServiceTypeCard(
-                        type = type,
-                        selected = selectedType == type,
-                        onClick = { selectedType = type }
-                    )
+                item {
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(2),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 300.dp), // Adjust height as needed
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        userScrollEnabled = false // Prevent nested scroll
+                    ) {
+                        items(ServiceType.values()) { type ->
+                            FilterChip(
+                                selected = selectedType == type,
+                                onClick = { selectedType = type },
+                                label = { Text(type.getDisplayName()) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                            )
+                        }
+                    }
                 }
-
                 item {
                     ServiceTypeCard(
                         type = null,
@@ -161,19 +177,23 @@ fun ServiceTypeCard(
                     ServiceType.SOCIAL -> Icons.Default.People
                     ServiceType.MENTAL_HEALTH -> Icons.Default.Psychology
                     ServiceType.PEER_SUPPORT -> Icons.Default.Group
-                    ServiceType.SPORT -> Icons.Default.SportsHandball
+                    ServiceType.SPORT_AND_FITNESS -> Icons.Default.SportsHandball
                     ServiceType.RECOVERY -> Icons.Default.Refresh
                     ServiceType.SKILL_BUILDING -> Icons.Default.School
                     ServiceType.EDUCATION -> Icons.Default.School
                     ServiceType.FOOD_BANKS -> Icons.Default.Restaurant
-                    null -> Icons.Default.AllInclusive
+                    ServiceType.PRACTICAL -> Icons.Default.Support
+                    ServiceType.EMPLOYMENT -> Icons.Default.Work
+                    ServiceType.COMMUNITY_INTEREST_GROUPS -> Icons.Default.Palette
+                    null -> Icons.Default.QuestionMark
                 },
-                contentDescription = null,
-                modifier = Modifier.size(48.dp)
+                contentDescription = type?.getDisplayName() ?: "Unknown",
+                modifier = Modifier.size(32.dp),
+                tint = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = type?.name?.replace("_", " ") ?: "All Services",
+                text = type?.getDisplayName() ?: "All Services",
                 style = MaterialTheme.typography.titleMedium,
                 textAlign = TextAlign.Center
             )

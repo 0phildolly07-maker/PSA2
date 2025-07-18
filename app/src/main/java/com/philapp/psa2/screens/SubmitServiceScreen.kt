@@ -13,6 +13,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
+import com.philapp.psa2.model.AreaList
 
 data class ScheduleEntry(var day: String, var startTime: String, var endTime: String)
 
@@ -36,7 +37,7 @@ fun SubmitServiceScreen(navController: NavController) {
     var successMessage by remember { mutableStateOf("") }
     var isSubmitting by remember { mutableStateOf(false) }
 
-    val serviceTypeOptions = listOf("Mental health", "Social", "Sport", "Peer Support")
+    val serviceTypeOptions = listOf("Mental Health", "Social", "Sport & Fitness", "Peer Support")
     val statusOptions = listOf("Pending", "Approved", "Rejected")
     val frequencyOptions = listOf("weekly", "fortnightly", "monthly")
     val daysOfWeek = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
@@ -102,12 +103,41 @@ fun SubmitServiceScreen(navController: NavController) {
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(8.dp))
-        OutlinedTextField(
-            value = town,
-            onValueChange = { town = it },
-            label = { Text("Town") },
+        // Replace the town text field with a dropdown
+        var townExpanded by remember { mutableStateOf(false) }
+        ExposedDropdownMenuBox(
+            expanded = townExpanded,
+            onExpandedChange = { townExpanded = !townExpanded },
             modifier = Modifier.fillMaxWidth()
-        )
+        ) {
+            OutlinedTextField(
+                value = town,
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Town") },
+                placeholder = { Text("Select a town") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = townExpanded) },
+                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor()
+            )
+
+            ExposedDropdownMenu(
+                expanded = townExpanded,
+                onDismissRequest = { townExpanded = false }
+            ) {
+                AreaList.Lancashire_Areas.forEach { area ->
+                    DropdownMenuItem(
+                        text = { Text(area) },
+                        onClick = {
+                            town = area
+                            townExpanded = false
+                        }
+                    )
+                }
+            }
+        }
         Spacer(modifier = Modifier.height(8.dp))
         OutlinedTextField(
             value = organisationName,

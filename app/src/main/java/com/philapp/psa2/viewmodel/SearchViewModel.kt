@@ -83,10 +83,10 @@ class SearchViewModel(
             _error.value = null
             
             try {
-                Log.d("SearchViewModel", "Loading approved services")
-                serviceRepository.getApprovedServices().collect { approvedServices ->
-                    Log.d("SearchViewModel", "Received ${approvedServices.size} approved services")
-                    _services.value = approvedServices
+                Log.d("SearchViewModel", "Loading all services")
+                serviceRepository.getAllServices().collect { allServices ->
+                    Log.d("SearchViewModel", "Received ${allServices.size} services")
+                    _services.value = allServices
                 }
             } catch (e: Exception) {
                 Log.e("SearchViewModel", "Error loading services", e)
@@ -119,7 +119,7 @@ class SearchViewModel(
             
             try {
                 Log.d("SearchViewModel", "Searching services - Query: $query, Type: $type, Location: $location")
-                serviceRepository.getApprovedServices().collect { allServices ->
+                serviceRepository.getAllServices().collect { allServices ->
                     val filteredServices = allServices.filter { service ->
                         val matchesQuery = query.isEmpty() || 
                             service.organizationName.contains(query, ignoreCase = true) ||
@@ -209,6 +209,28 @@ class SearchViewModel(
         return _services.value.filter { it.status == ServiceStatus.REJECTED }
     }
 
+    fun getDuplicateServices(): List<List<Service>> {
+        val services = _services.value
+        val grouped = services.groupBy { Triple(it.organizationName, it.groupName, it.location) }
+        return grouped.values.filter { it.size > 1 }
+    }
+
+    fun removeDuplicateServices() {
+        viewModelScope.launch {
+            try {
+                _isLoading.value = true
+                serviceRepository.removeDuplicateServices()
+                loadServices() // Reload services after removing duplicates
+                Log.d("SearchViewModel", "Successfully removed duplicate services")
+            } catch (e: Exception) {
+                Log.e("SearchViewModel", "Error removing duplicate services", e)
+                _error.value = e
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
     fun updateServiceStatus(serviceId: String, newStatus: ServiceStatus) {
         viewModelScope.launch {
             _isLoading.value = true
@@ -271,9 +293,20 @@ class SearchViewModel(
                     } else null,
                     schedule = if (schedule.isNotBlank()) schedule else null
                 )
-                repository.addService(newService)
+                
+                Log.d("SearchViewModel", "Adding new service: ${newService.organizationName} - ${newService.groupName}")
+                val result = repository.addService(newService)
+                
+                result.onSuccess { serviceId ->
+                    Log.d("SearchViewModel", "Successfully added service with ID: $serviceId")
+                }.onFailure { e ->
+                    Log.e("SearchViewModel", "Failed to add service", e)
+                    _searchState.value = SearchState.Error("Failed to add service: ${e.message}")
+                }
+                
                 loadServices() // Reload services after adding
             } catch (e: Exception) {
+                Log.e("SearchViewModel", "Error in addNewService", e)
                 _searchState.value = SearchState.Error("Failed to add service: ${e.message}")
             }
         }
@@ -371,14 +404,12 @@ class SearchViewModel(
         features: List<String>? = null,
         contactPhone: String? = null,
         contactEmail: String? = null,
-        schedule: String? = null
+        schedule: String? = null,
+        websiteUrl: String? = null
     ) {
         viewModelScope.launch {
             try {
-                // Find the existing service
                 val existingService = _services.value.find { it.id == serviceId } ?: return@launch
-                
-                // Create updated service with new values or existing values if not provided
                 val updatedService = existingService.copy(
                     organizationName = organizationName ?: existingService.organizationName,
                     groupName = groupName ?: existingService.groupName,
@@ -392,17 +423,20 @@ class SearchViewModel(
                             email = contactEmail ?: existingService.contact?.email ?: ""
                         )
                     } else existingService.contact,
-                    schedule = schedule ?: existingService.schedule
+                    schedule = schedule ?: existingService.schedule,
+                    websiteUrl = websiteUrl ?: existingService.websiteUrl
                 )
-
-                // Update in repository
                 repository.updateService(updatedService)
                 
-                // Update in local list
-                _services.value = _services.value.map { 
-                    if (it.id == serviceId) updatedService else it 
-                }
+                // Update the local list immediately
+                _services.value = _services.value.map { if (it.id == serviceId) updatedService else it }
+                
+                // Reload services from Firebase to ensure consistency
+                loadServices()
+                
+                Log.d("SearchViewModel", "Successfully updated service: ${updatedService.organizationName} - ${updatedService.groupName}")
             } catch (e: Exception) {
+                Log.e("SearchViewModel", "Failed to update service", e)
                 _searchState.value = SearchState.Error("Failed to update service: ${e.message}")
             }
         }
@@ -423,7 +457,8 @@ class SearchViewModel(
                     email = ""
                 ),
                 schedule = "Monday 13:30-14:30 (Weekly)",
-                status = ServiceStatus.PENDING
+                status = ServiceStatus.PENDING,
+                websiteUrl = "https://redroserecovery.org.uk"
             ),
             Service(
                 id = UUID.randomUUID().toString(),
@@ -431,14 +466,15 @@ class SearchViewModel(
                 groupName = "Mindful Movement",
                 location = "St.James Old School Building, Accrington",
                 description = "Calm your mind with relaxing movements and light exercise, recovery based.",
-                types = listOf(ServiceType.SPORT, ServiceType.RECOVERY),
+                types = listOf(ServiceType.SPORT_AND_FITNESS, ServiceType.RECOVERY),
                 features = listOf("Mindfulness", "Exercise", "Recovery Support"),
                 contact = ContactInfo(
                     phone = "Bridget - 07483356858",
                     email = ""
                 ),
                 schedule = "Monday 14:30-15:30 (Weekly)",
-                status = ServiceStatus.PENDING
+                status = ServiceStatus.PENDING,
+                websiteUrl = "https://redroserecovery.org.uk"
             ),
             Service(
                 id = UUID.randomUUID().toString(),
@@ -453,7 +489,8 @@ class SearchViewModel(
                     email = ""
                 ),
                 schedule = "Tuesday 10:00-11:30 (Weekly)",
-                status = ServiceStatus.PENDING
+                status = ServiceStatus.PENDING,
+                websiteUrl = "https://redroserecovery.org.uk"
             ),
             Service(
                 id = UUID.randomUUID().toString(),
@@ -461,14 +498,15 @@ class SearchViewModel(
                 groupName = "Lunch, Brunch, Walk and Talk",
                 location = "ABD Centre, Burnley Road, Bacup",
                 description = "Come along for breakfast and a lovely walk through the countryside. Pick-ups can be arranged from fixed locations.",
-                types = listOf(ServiceType.PEER_SUPPORT, ServiceType.SOCIAL, ServiceType.SPORT),
+                types = listOf(ServiceType.PEER_SUPPORT, ServiceType.SOCIAL, ServiceType.SPORT_AND_FITNESS),
                 features = listOf("Breakfast", "Walking", "Transport available", "Social"),
                 contact = ContactInfo(
                     phone = "Shaun - 07351614902",
                     email = ""
                 ),
                 schedule = "Tuesday 11:00-14:00 (Weekly)",
-                status = ServiceStatus.PENDING
+                status = ServiceStatus.PENDING,
+                websiteUrl = "https://redroserecovery.org.uk"
             ),
             Service(
                 id = UUID.randomUUID().toString(),
@@ -483,7 +521,8 @@ class SearchViewModel(
                     email = ""
                 ),
                 schedule = "Tuesday 12:30-13:30 (Weekly)",
-                status = ServiceStatus.PENDING
+                status = ServiceStatus.PENDING,
+                websiteUrl = "https://redroserecovery.org.uk"
             ),
             Service(
                 id = UUID.randomUUID().toString(),
@@ -491,14 +530,15 @@ class SearchViewModel(
                 groupName = "Feel Good Fitness",
                 location = "St.James Old School Building, Accrington",
                 description = "Light exercise suitable for all abilities",
-                types = listOf(ServiceType.SPORT, ServiceType.RECOVERY, ServiceType.SOCIAL),
+                types = listOf(ServiceType.SPORT_AND_FITNESS, ServiceType.RECOVERY, ServiceType.SOCIAL),
                 features = listOf("Exercise", "All abilities", "Recovery Support"),
                 contact = ContactInfo(
                     phone = "Bridget - 07483356858",
                     email = ""
                 ),
                 schedule = "Tuesday 14:00-15:00 (Weekly)",
-                status = ServiceStatus.PENDING
+                status = ServiceStatus.PENDING,
+                websiteUrl = "https://redroserecovery.org.uk"
             ),
             Service(
                 id = UUID.randomUUID().toString(),
@@ -506,14 +546,15 @@ class SearchViewModel(
                 groupName = "Fishing for Mental Health",
                 location = "Burnley Inspire East Lancashire, Westgate, BB111RY",
                 description = "Fishing Group, Recovery Based, Pick-ups from fixed locations. Bookings must be made with Shaun or Gareth.",
-                types = listOf(ServiceType.SPORT, ServiceType.RECOVERY, ServiceType.MENTAL_HEALTH, ServiceType.SKILL_BUILDING),
+                types = listOf(ServiceType.COMMUNITY_INTEREST_GROUPS, ServiceType.RECOVERY, ServiceType.MENTAL_HEALTH, ServiceType.SKILL_BUILDING),
                 features = listOf("Fishing", "Transport available", "Booking required", "Recovery Support"),
                 contact = ContactInfo(
                     phone = "Shaun - 07351614902, Gareth - 07351614926",
                     email = ""
                 ),
                 schedule = "Wednesday 09:00-14:00 (Weekly)",
-                status = ServiceStatus.PENDING
+                status = ServiceStatus.PENDING,
+                websiteUrl = "https://redroserecovery.org.uk"
             ),
             Service(
                 id = UUID.randomUUID().toString(),
@@ -528,7 +569,8 @@ class SearchViewModel(
                     email = ""
                 ),
                 schedule = "Wednesday 10:00-11:00 (Weekly)",
-                status = ServiceStatus.PENDING
+                status = ServiceStatus.PENDING,
+                websiteUrl = "https://redroserecovery.org.uk"
             ),
             Service(
                 id = UUID.randomUUID().toString(),
@@ -536,14 +578,15 @@ class SearchViewModel(
                 groupName = "No Excuse Boxing Workout",
                 location = "87 Blackburn Road, Accrington",
                 description = "Improve your fitness in a friendly environment with other people in recovery from drugs/alcohol/mental health issues.",
-                types = listOf(ServiceType.SPORT, ServiceType.RECOVERY),
+                types = listOf(ServiceType.SPORT_AND_FITNESS, ServiceType.RECOVERY),
                 features = listOf("Boxing", "Fitness", "Recovery Support", "Group Workout"),
                 contact = ContactInfo(
                     phone = "Gemma - 07483915707",
                     email = ""
                 ),
                 schedule = "Monday 11:45-13:00 (Weekly)",
-                status = ServiceStatus.PENDING
+                status = ServiceStatus.PENDING,
+                websiteUrl = "https://redroserecovery.org.uk"
             ),
             Service(
                 id = UUID.randomUUID().toString(),
@@ -551,14 +594,15 @@ class SearchViewModel(
                 groupName = "Get Crafty",
                 location = "St.James Old School Building, Accrington",
                 description = "Arts And Crafts",
-                types = listOf(ServiceType.SOCIAL, ServiceType.PEER_SUPPORT),
+                types = listOf(ServiceType.COMMUNITY_INTEREST_GROUPS, ServiceType.PEER_SUPPORT),
                 features = listOf("Arts and Crafts", "Social", "Peer Support"),
                 contact = ContactInfo(
                     phone = "Bridget - 07483356858",
                     email = ""
                 ),
                 schedule = "Monday 10:00-11:45 (Weekly)",
-                status = ServiceStatus.PENDING
+                status = ServiceStatus.PENDING,
+                websiteUrl = "https://redroserecovery.org.uk"
             ),
             Service(
                 id = UUID.randomUUID().toString(),
@@ -573,7 +617,8 @@ class SearchViewModel(
                     email = ""
                 ),
                 schedule = "Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday, 11am - 12pm",
-                status = ServiceStatus.PENDING
+                status = ServiceStatus.PENDING,
+                websiteUrl = "https://redroserecovery.org.uk"
             ),
             Service(
                 id = UUID.randomUUID().toString(),
@@ -585,7 +630,8 @@ class SearchViewModel(
                 features = listOf("Breakfast", "Social", "Support"),
                 contact = ContactInfo(phone = "", email = ""),
                 schedule = "Tuesday 09:30-10:30",
-                status = ServiceStatus.PENDING
+                status = ServiceStatus.PENDING,
+                websiteUrl = "https://redroserecovery.org.uk"
             ),
             Service(
                 id = UUID.randomUUID().toString(),
@@ -597,7 +643,8 @@ class SearchViewModel(
                 features = listOf("Drop-in", "Social", "Support", "Refreshments"),
                 contact = ContactInfo(phone = "", email = ""),
                 schedule = "Tuesday 11:00-13:00",
-                status = ServiceStatus.PENDING
+                status = ServiceStatus.PENDING,
+                websiteUrl = "https://redroserecovery.org.uk"
             ),
             Service(
                 id = UUID.randomUUID().toString(),
@@ -609,7 +656,8 @@ class SearchViewModel(
                 features = listOf("Food", "Advice", "Support", "Social"),
                 contact = ContactInfo(phone = "", email = ""),
                 schedule = "Tuesday 11:00-12:00",
-                status = ServiceStatus.PENDING
+                status = ServiceStatus.PENDING,
+                websiteUrl = "https://redroserecovery.org.uk"
             ),
             Service(
                 id = UUID.randomUUID().toString(),
@@ -617,11 +665,12 @@ class SearchViewModel(
                 groupName = "Walking group Bacup",
                 location = "A B & D Centre, Burnley Road, Bacup, OL13 8AB",
                 description = "Walking group with friendly folk. All abilities welcome!",
-                types = listOf(ServiceType.PEER_SUPPORT, ServiceType.SOCIAL),
+                types = listOf(ServiceType.PEER_SUPPORT, ServiceType.SOCIAL, ServiceType.SPORT_AND_FITNESS),
                 features = listOf("Walking", "Exercise", "Social", "Inclusive"),
                 contact = ContactInfo(phone = "", email = ""),
                 schedule = "Tuesday 12:00-14:00",
-                status = ServiceStatus.PENDING
+                status = ServiceStatus.PENDING,
+                websiteUrl = "https://redroserecovery.org.uk"
             ),
             Service(
                 id = UUID.randomUUID().toString(),
@@ -633,9 +682,165 @@ class SearchViewModel(
                 features = listOf("Acupuncture", "Wellbeing"),
                 contact = ContactInfo(phone = "Please ask your key-worker for details", email = ""),
                 schedule = "Tuesday 12:50",
+                status = ServiceStatus.PENDING,
+                websiteUrl = "https://redroserecovery.org.uk"
+            ),
+            
+            // Add Colne services
+            Service(
+                id = UUID.randomUUID().toString(),
+                organizationName = "Colne Community Centre",
+                groupName = "Colne Walking Group",
+                location = "Colne Community Centre, Colne",
+                description = "Weekly walking group exploring the beautiful countryside around Colne. All abilities welcome!",
+                types = listOf(ServiceType.SOCIAL, ServiceType.SPORT_AND_FITNESS, ServiceType.PEER_SUPPORT),
+                features = listOf("Walking", "Outdoor", "Social", "All abilities"),
+                contact = ContactInfo(
+                    phone = "01282 123456",
+                    email = "info@colnecommunity.org"
+                ),
+                schedule = "Tuesday 10:00-12:00 (Weekly)",
+                status = ServiceStatus.PENDING
+            ),
+            Service(
+                id = UUID.randomUUID().toString(),
+                organizationName = "Colne Mental Health Support",
+                groupName = "Colne Wellbeing Group",
+                location = "Colne Library, Market Street, Colne",
+                description = "A supportive group for people experiencing mental health challenges. Share experiences and learn coping strategies.",
+                types = listOf(ServiceType.MENTAL_HEALTH, ServiceType.PEER_SUPPORT),
+                features = listOf("Mental health support", "Peer support", "Coping strategies", "Safe space"),
+                contact = ContactInfo(
+                    phone = "01282 654321",
+                    email = "wellbeing@colne.org"
+                ),
+                schedule = "Thursday 14:00-16:00 (Weekly)",
+                status = ServiceStatus.PENDING
+            ),
+            Service(
+                id = UUID.randomUUID().toString(),
+                organizationName = "Colne Sports Centre",
+                groupName = "Colne Fitness Club",
+                location = "Colne Sports Centre, Colne",
+                description = "Fitness sessions suitable for all levels. Improve your health and meet new people in a friendly environment.",
+                types = listOf(ServiceType.SPORT_AND_FITNESS, ServiceType.SOCIAL),
+                features = listOf("Fitness", "Exercise", "Social", "All levels"),
+                contact = ContactInfo(
+                    phone = "01282 789012",
+                    email = "fitness@colnesports.org"
+                ),
+                schedule = "Monday and Wednesday 18:00-19:00 (Weekly)",
+                status = ServiceStatus.PENDING
+            ),
+            
+            // Practical Support Services
+            Service(
+                id = UUID.randomUUID().toString(),
+                organizationName = "Lancashire Food Bank",
+                groupName = "Accrington Food Bank",
+                location = "Accrington Community Centre, Accrington",
+                description = "Emergency food support for individuals and families in need. No referral required, confidential service.",
+                types = listOf(ServiceType.PRACTICAL, ServiceType.FOOD_BANKS),
+                features = listOf("Emergency food", "No referral needed", "Confidential", "Family support"),
+                contact = ContactInfo(
+                    phone = "01282 456789",
+                    email = "accrington@lancashirefoodbank.org"
+                ),
+                schedule = "Monday, Wednesday, Friday 10:00-14:00",
+                status = ServiceStatus.PENDING
+            ),
+            Service(
+                id = UUID.randomUUID().toString(),
+                organizationName = "Lancashire Food Bank",
+                groupName = "Burnley Food Bank",
+                location = "Burnley Community Hub, Burnley",
+                description = "Food bank providing essential supplies to those experiencing food poverty. Referral system available.",
+                types = listOf(ServiceType.PRACTICAL, ServiceType.FOOD_BANKS),
+                features = listOf("Essential supplies", "Referral system", "Emergency support", "Community hub"),
+                contact = ContactInfo(
+                    phone = "01282 789456",
+                    email = "burnley@lancashirefoodbank.org"
+                ),
+                schedule = "Tuesday, Thursday 09:00-15:00",
+                status = ServiceStatus.PENDING
+            ),
+            Service(
+                id = UUID.randomUUID().toString(),
+                organizationName = "Lancashire Care Services",
+                groupName = "Home Care Support",
+                location = "Various locations across Lancashire",
+                description = "Professional home care services including personal care, domestic support, and companionship for elderly and vulnerable individuals.",
+                types = listOf(ServiceType.PRACTICAL),
+                features = listOf("Personal care", "Domestic support", "Companionship", "Elderly care", "Vulnerable support"),
+                contact = ContactInfo(
+                    phone = "0800 123 4567",
+                    email = "info@lancashirecare.org"
+                ),
+                schedule = "Monday to Sunday, 24/7 availability",
+                status = ServiceStatus.PENDING
+            ),
+            Service(
+                id = UUID.randomUUID().toString(),
+                organizationName = "Community Transport Service",
+                groupName = "Lancashire Community Transport",
+                location = "Various pick-up points across Lancashire",
+                description = "Accessible transport service for medical appointments, shopping, and social activities. Wheelchair accessible vehicles available.",
+                types = listOf(ServiceType.PRACTICAL),
+                features = listOf("Medical transport", "Shopping trips", "Wheelchair accessible", "Social outings", "Door-to-door service"),
+                contact = ContactInfo(
+                    phone = "01282 321654",
+                    email = "transport@lancashirecommunity.org"
+                ),
+                schedule = "Monday to Friday 08:00-18:00",
+                status = ServiceStatus.PENDING
+            ),
+            
+            // New Community Interest Groups Services
+            Service(
+                id = UUID.randomUUID().toString(),
+                organizationName = "Lancashire Creative Writing Group",
+                groupName = "Creative Writing Workshop",
+                location = "Accrington Library, St James Street, Accrington",
+                description = "Join our creative writing group to explore storytelling, poetry, and creative expression. All levels welcome from beginners to experienced writers.",
+                types = listOf(ServiceType.COMMUNITY_INTEREST_GROUPS, ServiceType.SKILL_BUILDING),
+                features = listOf("Creative writing", "Poetry", "Storytelling", "All levels", "Workshop format"),
+                contact = ContactInfo(
+                    phone = "01254 123456",
+                    email = "writing@lancashirecreative.org"
+                ),
+                schedule = "Tuesday 14:00-16:00 (Weekly)",
+                status = ServiceStatus.PENDING
+            ),
+            Service(
+                id = UUID.randomUUID().toString(),
+                organizationName = "Burnley Music Society",
+                groupName = "Community Choir",
+                location = "Burnley Community Centre, Burnley",
+                description = "Join our friendly community choir. No experience necessary - just bring your voice and enthusiasm! We sing a variety of music from folk to contemporary.",
+                types = listOf(ServiceType.COMMUNITY_INTEREST_GROUPS, ServiceType.SOCIAL),
+                features = listOf("Choir", "Music", "Singing", "No experience needed", "Social"),
+                contact = ContactInfo(
+                    phone = "01282 654321",
+                    email = "choir@burnleymusic.org"
+                ),
+                schedule = "Thursday 19:00-21:00 (Weekly)",
+                status = ServiceStatus.PENDING
+            ),
+            Service(
+                id = UUID.randomUUID().toString(),
+                organizationName = "Colne Photography Club",
+                groupName = "Photography for Beginners",
+                location = "Colne Community Centre, Colne",
+                description = "Learn photography basics and improve your skills. Bring your camera or smartphone. We cover composition, lighting, and editing techniques.",
+                types = listOf(ServiceType.COMMUNITY_INTEREST_GROUPS, ServiceType.SKILL_BUILDING),
+                features = listOf("Photography", "Beginners welcome", "Camera skills", "Editing", "Outdoor sessions"),
+                contact = ContactInfo(
+                    phone = "01282 789123",
+                    email = "photo@colnecommunity.org"
+                ),
+                schedule = "Saturday 10:00-12:00 (Weekly)",
                 status = ServiceStatus.PENDING
             )
-            // Add more sample services as needed
         )
     }
 
@@ -661,7 +866,7 @@ class SearchViewModel(
                     groupName = "Fishing for mental health",
                     location = "Inspire, Burnley house, 37-41 Westgate, Burnley, BB11 1RY",
                     description = "Inclusive fishing group & lessons. Booking must be made as spaces are limited.",
-                    types = listOf(ServiceType.MENTAL_HEALTH, ServiceType.SPORT, ServiceType.PEER_SUPPORT),
+                    types = listOf(ServiceType.COMMUNITY_INTEREST_GROUPS, ServiceType.RECOVERY, ServiceType.PEER_SUPPORT),
                     features = listOf("Fishing", "Lessons", "Booking required"),
                     contactPhone = "07727611550",
                     contactEmail = "",
@@ -674,7 +879,7 @@ class SearchViewModel(
                     groupName = "Art Group Accrington Inspire",
                     location = "Inspire, 33 Eagle Street, Accrington, BB5 1LN",
                     description = "Art group session",
-                    types = listOf(ServiceType.PEER_SUPPORT, ServiceType.SOCIAL, ServiceType.RECOVERY),
+                    types = listOf(ServiceType.COMMUNITY_INTEREST_GROUPS, ServiceType.SOCIAL, ServiceType.RECOVERY),
                     features = listOf("Art", "Creative"),
                     contactPhone = "",
                     contactEmail = "",
@@ -687,7 +892,7 @@ class SearchViewModel(
                     groupName = "Recovery Drop-in Clitheroe",
                     location = "Young Peoples Centre, Wesleyan Row, Parson Ln, Clitheroe BB7 2JY",
                     description = "Including: Declutter your mind course, brews and biscuits, sound bowl therapy, badminton & basketball",
-                    types = listOf(ServiceType.PEER_SUPPORT, ServiceType.SOCIAL, ServiceType.SPORT, ServiceType.MENTAL_HEALTH),
+                    types = listOf(ServiceType.PEER_SUPPORT, ServiceType.SOCIAL, ServiceType.SPORT_AND_FITNESS, ServiceType.MENTAL_HEALTH),
                     features = listOf("Declutter your mind", "Sound bowl therapy", "Sports", "Refreshments"),
                     contactPhone = "",
                     contactEmail = "",
@@ -760,7 +965,7 @@ class SearchViewModel(
                     groupName = "Guitar Lessons for Beginners",
                     location = "Grassroots Nelson",
                     description = "Beginner guitar lessons",
-                    types = listOf(ServiceType.SOCIAL, ServiceType.SKILL_BUILDING),
+                    types = listOf(ServiceType.COMMUNITY_INTEREST_GROUPS, ServiceType.SKILL_BUILDING),
                     features = listOf("Music", "Guitar", "Beginner friendly"),
                     contactPhone = "",
                     contactEmail = "",
@@ -773,7 +978,7 @@ class SearchViewModel(
                     groupName = "Multiple Activities Group",
                     location = "The Old Grammar School, Earby",
                     description = "Choice of groups; Walking and wellbeing, art group, cooking and retail volunteering in partnership with Robert Windle Foundation. Breakfast and lunch included (Transport from Burnley at 09:30/ Nelson at 10:30 and back to locations.)",
-                    types = listOf(ServiceType.SOCIAL, ServiceType.SKILL_BUILDING, ServiceType.SPORT, ServiceType.PEER_SUPPORT),
+                    types = listOf(ServiceType.COMMUNITY_INTEREST_GROUPS, ServiceType.SKILL_BUILDING, ServiceType.SPORT_AND_FITNESS, ServiceType.PEER_SUPPORT),
                     features = listOf("Walking", "Art", "Cooking", "Volunteering", "Transport provided", "Meals included"),
                     contactPhone = "",
                     contactEmail = "",
@@ -833,7 +1038,7 @@ class SearchViewModel(
                     groupName = "Arts & Crafts with Bekki",
                     location = "Grassroots Nelson",
                     description = "Arts and crafts session",
-                    types = listOf(ServiceType.SOCIAL, ServiceType.SKILL_BUILDING),
+                    types = listOf(ServiceType.COMMUNITY_INTEREST_GROUPS, ServiceType.SOCIAL),
                     features = listOf("Art", "Crafts", "Creative"),
                     contactPhone = "",
                     contactEmail = "",
@@ -923,6 +1128,348 @@ class SearchViewModel(
         }
     }
 
+    // Add a function to get all hardcoded services including Wednesday, Thursday, Friday
+    private fun getAllHardcodedServices(): List<Service> {
+        val allServices = mutableListOf<Service>()
+        
+        // Add sample services
+        allServices.addAll(getSampleServices())
+        
+        // Add Wednesday services
+        allServices.addAll(listOf(
+            Service(
+                id = UUID.randomUUID().toString(),
+                organizationName = "Inspire",
+                groupName = "Women's Coffee Group with Jodie",
+                location = "Inspire Location",
+                description = "Women's coffee group session",
+                types = listOf(ServiceType.SOCIAL, ServiceType.PEER_SUPPORT),
+                features = listOf("Women only", "Coffee group"),
+                contact = ContactInfo(phone = "", email = ""),
+                schedule = "Wednesday 10:00 to 13:00",
+                status = ServiceStatus.PENDING
+            ),
+            Service(
+                id = UUID.randomUUID().toString(),
+                organizationName = "Red Rose Recovery/Inspire",
+                groupName = "Fishing for mental health",
+                location = "Inspire, Burnley house, 37-41 Westgate, Burnley, BB11 1RY",
+                description = "Inclusive fishing group & lessons. Booking must be made as spaces are limited.",
+                types = listOf(ServiceType.COMMUNITY_INTEREST_GROUPS, ServiceType.RECOVERY, ServiceType.PEER_SUPPORT),
+                features = listOf("Fishing", "Lessons", "Booking required"),
+                contact = ContactInfo(phone = "07727611550", email = ""),
+                schedule = "Wednesday 09:15 to 14:30",
+                status = ServiceStatus.PENDING
+            ),
+            Service(
+                id = UUID.randomUUID().toString(),
+                organizationName = "Inspire",
+                groupName = "Art Group Accrington Inspire",
+                location = "Inspire, 33 Eagle Street, Accrington, BB5 1LN",
+                description = "Art group session",
+                types = listOf(ServiceType.COMMUNITY_INTEREST_GROUPS, ServiceType.SOCIAL, ServiceType.RECOVERY),
+                features = listOf("Art", "Creative"),
+                contact = ContactInfo(phone = "", email = ""),
+                schedule = "Wednesday 13:00 to 15:00",
+                status = ServiceStatus.PENDING
+            ),
+            Service(
+                id = UUID.randomUUID().toString(),
+                organizationName = "Inspire",
+                groupName = "Recovery Drop-in Clitheroe",
+                location = "Young Peoples Centre, Wesleyan Row, Parson Ln, Clitheroe BB7 2JY",
+                description = "Including: Declutter your mind course, brews and biscuits, sound bowl therapy, badminton & basketball",
+                types = listOf(ServiceType.PEER_SUPPORT, ServiceType.SOCIAL, ServiceType.SPORT_AND_FITNESS, ServiceType.MENTAL_HEALTH),
+                features = listOf("Declutter your mind", "Sound bowl therapy", "Sports", "Refreshments"),
+                contact = ContactInfo(phone = "", email = ""),
+                schedule = "Wednesday 12:30 to 14:30",
+                status = ServiceStatus.PENDING
+            ),
+            Service(
+                id = UUID.randomUUID().toString(),
+                organizationName = "Inspire",
+                groupName = "Recovery Social Evening",
+                location = "Inspire, Burnley house, 37-41 Westgate, Burnley, BB11 1RY",
+                description = "A friendly get together for a bit of food, a bit of fun and a bit of banter.",
+                types = listOf(ServiceType.PEER_SUPPORT, ServiceType.RECOVERY),
+                features = listOf("Social", "Food", "Entertainment"),
+                contact = ContactInfo(phone = "", email = ""),
+                schedule = "Wednesday 17:00 to 19:30 (Last Wednesday of month)",
+                status = ServiceStatus.PENDING
+            )
+        ))
+        
+        // Add Thursday services
+        allServices.addAll(listOf(
+            Service(
+                id = UUID.randomUUID().toString(),
+                organizationName = "Inspire",
+                groupName = "Cooking on a budget",
+                location = "Inspire, Burnley house, 37-41 Westgate, Burnley, BB11 1RY",
+                description = "Cooking class followed by lunch",
+                types = listOf(ServiceType.SOCIAL, ServiceType.SKILL_BUILDING),
+                features = listOf("Cooking", "Lunch provided", "Budget friendly"),
+                contact = ContactInfo(phone = "", email = ""),
+                schedule = "Thursday 10:30 to 12:30",
+                status = ServiceStatus.PENDING
+            ),
+            Service(
+                id = UUID.randomUUID().toString(),
+                organizationName = "Inspire",
+                groupName = "Breakfast Social Club",
+                location = "Grassroots Nelson",
+                description = "Morning breakfast social club",
+                types = listOf(ServiceType.SOCIAL, ServiceType.PEER_SUPPORT),
+                features = listOf("Breakfast", "Social"),
+                contact = ContactInfo(phone = "", email = ""),
+                schedule = "Thursday 09:30 to 10:30",
+                status = ServiceStatus.PENDING
+            ),
+            Service(
+                id = UUID.randomUUID().toString(),
+                organizationName = "Inspire",
+                groupName = "Declutter your Mind & Here and Now Group",
+                location = "Grassroots Nelson",
+                description = "Mental wellness and mindfulness group",
+                types = listOf(ServiceType.MENTAL_HEALTH, ServiceType.PEER_SUPPORT),
+                features = listOf("Mindfulness", "Mental wellness"),
+                contact = ContactInfo(phone = "", email = ""),
+                schedule = "Thursday 10:30 to 11:30",
+                status = ServiceStatus.PENDING
+            ),
+            Service(
+                id = UUID.randomUUID().toString(),
+                organizationName = "Inspire",
+                groupName = "Guitar Lessons for Beginners",
+                location = "Grassroots Nelson",
+                description = "Beginner guitar lessons",
+                types = listOf(ServiceType.COMMUNITY_INTEREST_GROUPS, ServiceType.SKILL_BUILDING),
+                features = listOf("Music", "Guitar", "Beginner friendly"),
+                contact = ContactInfo(phone = "", email = ""),
+                schedule = "Thursday 10:30 to 11:30",
+                status = ServiceStatus.PENDING
+            ),
+            Service(
+                id = UUID.randomUUID().toString(),
+                organizationName = "Inspire",
+                groupName = "Multiple Activities Group",
+                location = "The Old Grammar School, Earby",
+                description = "Choice of groups; Walking and wellbeing, art group, cooking and retail volunteering in partnership with Robert Windle Foundation. Breakfast and lunch included (Transport from Burnley at 09:30/ Nelson at 10:30 and back to locations.)",
+                types = listOf(ServiceType.COMMUNITY_INTEREST_GROUPS, ServiceType.SKILL_BUILDING, ServiceType.SPORT_AND_FITNESS, ServiceType.PEER_SUPPORT),
+                features = listOf("Walking", "Art", "Cooking", "Volunteering", "Transport provided", "Meals included"),
+                contact = ContactInfo(phone = "", email = ""),
+                schedule = "Thursday 9:30 to 14:30",
+                status = ServiceStatus.PENDING
+            )
+        ))
+        
+        // Add Friday services
+        allServices.addAll(listOf(
+            Service(
+                id = UUID.randomUUID().toString(),
+                organizationName = "Inspire",
+                groupName = "Breakfast Club",
+                location = "Inspire, Burnley house, 37-41 Westgate, Burnley, BB11 1RY",
+                description = "Breakfast Club for those participating in groups",
+                types = listOf(ServiceType.SOCIAL, ServiceType.PEER_SUPPORT),
+                features = listOf("Breakfast", "Social"),
+                contact = ContactInfo(phone = "", email = ""),
+                schedule = "Friday 09:00 to 10:00",
+                status = ServiceStatus.PENDING
+            ),
+            Service(
+                id = UUID.randomUUID().toString(),
+                organizationName = "Inspire",
+                groupName = "Declutter Your Mind Course",
+                location = "Inspire, Burnley house, 37-41 Westgate, Burnley, BB11 1RY",
+                description = "Mental wellness and mindfulness course",
+                types = listOf(ServiceType.MENTAL_HEALTH, ServiceType.PEER_SUPPORT),
+                features = listOf("Mindfulness", "Mental wellness", "Course"),
+                contact = ContactInfo(phone = "", email = ""),
+                schedule = "Friday 10:30 to 12:30",
+                status = ServiceStatus.PENDING
+            ),
+            Service(
+                id = UUID.randomUUID().toString(),
+                organizationName = "Inspire",
+                groupName = "Fun Time Friday",
+                location = "Inspire, Burnley house, 37-41 Westgate, Burnley, BB11 1RY",
+                description = "Social Group - Burnley inspire",
+                types = listOf(ServiceType.SOCIAL, ServiceType.PEER_SUPPORT),
+                features = listOf("Social", "Fun activities"),
+                contact = ContactInfo(phone = "", email = ""),
+                schedule = "Friday 13:00 to 14:30",
+                status = ServiceStatus.PENDING
+            ),
+            Service(
+                id = UUID.randomUUID().toString(),
+                organizationName = "Inspire",
+                groupName = "Arts & Crafts with Bekki",
+                location = "Grassroots Nelson",
+                description = "Arts and crafts session",
+                types = listOf(ServiceType.COMMUNITY_INTEREST_GROUPS, ServiceType.SOCIAL),
+                features = listOf("Art", "Crafts", "Creative"),
+                contact = ContactInfo(phone = "", email = ""),
+                schedule = "Friday 13:30 to 15:00",
+                status = ServiceStatus.PENDING
+            ),
+            Service(
+                id = UUID.randomUUID().toString(),
+                organizationName = "Inspire",
+                groupName = "Here and Now Group with Bryan",
+                location = "Accrington Inspire",
+                description = "Mindfulness and present-moment awareness group",
+                types = listOf(ServiceType.MENTAL_HEALTH, ServiceType.PEER_SUPPORT),
+                features = listOf("Mindfulness", "Mental wellness"),
+                contact = ContactInfo(phone = "", email = ""),
+                schedule = "Friday 14:00 to 15:00",
+                status = ServiceStatus.PENDING
+            )
+        ))
+        
+        return allServices
+    }
+
+    // Add a function to sync all hardcoded services with Firebase
+    fun syncAllServicesWithFirebase() {
+        viewModelScope.launch {
+            try {
+                _isLoading.value = true
+                _error.value = null
+                
+                Log.d("SearchViewModel", "Starting to sync all hardcoded services with Firebase")
+                
+                // First, get all existing services from Firebase
+                val existingServices = mutableListOf<Service>()
+                serviceRepository.getAllServices().collect { services ->
+                    existingServices.clear()
+                    existingServices.addAll(services)
+                }
+                
+                Log.d("SearchViewModel", "Found ${existingServices.size} existing services in Firebase")
+                
+                // Get all hardcoded services
+                val hardcodedServices = getAllHardcodedServices()
+                Log.d("SearchViewModel", "Found ${hardcodedServices.size} hardcoded services")
+                
+                // Check which hardcoded services are missing from Firebase
+                val missingServices = hardcodedServices.filter { hardcodedService ->
+                    !existingServices.any { existingService ->
+                        existingService.organizationName.equals(hardcodedService.organizationName, ignoreCase = true) &&
+                        existingService.groupName.equals(hardcodedService.groupName, ignoreCase = true) &&
+                        existingService.location.equals(hardcodedService.location, ignoreCase = true)
+                    }
+                }
+                
+                Log.d("SearchViewModel", "Found ${missingServices.size} services missing from Firebase")
+                
+                // Add missing services to Firebase
+                missingServices.forEach { service ->
+                    try {
+                        Log.d("SearchViewModel", "Adding missing service: ${service.organizationName} - ${service.groupName}")
+                        val result = repository.addService(service)
+                        result.onSuccess { id ->
+                            Log.d("SearchViewModel", "Successfully added missing service with ID: $id")
+                        }.onFailure { e ->
+                            Log.e("SearchViewModel", "Failed to add missing service", e)
+                        }
+                    } catch (e: Exception) {
+                        Log.e("SearchViewModel", "Error adding missing service", e)
+                    }
+                }
+                
+                // Add Wednesday, Thursday, and Friday services (these use addNewService which handles duplicates)
+                Log.d("SearchViewModel", "Adding Wednesday services")
+                addWednesdayServices()
+                
+                Log.d("SearchViewModel", "Adding Thursday services")
+                addThursdayServices()
+                
+                Log.d("SearchViewModel", "Adding Friday services")
+                addFridayServices()
+                
+                // Reload services after syncing
+                loadServices()
+                Log.d("SearchViewModel", "Finished syncing all services with Firebase")
+                
+            } catch (e: Exception) {
+                Log.e("SearchViewModel", "Error syncing services with Firebase", e)
+                _error.value = e
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    // Add a function to completely replace Firebase with hardcoded services
+    fun replaceFirebaseWithHardcodedServices() {
+        viewModelScope.launch {
+            try {
+                _isLoading.value = true
+                _error.value = null
+                
+                Log.d("SearchViewModel", "Starting complete Firebase replacement with hardcoded services")
+                
+                // Step 1: Clear existing Firebase documents
+                Log.d("SearchViewModel", "Step 1: Clearing existing Firebase documents")
+                val clearResult = serviceRepository.clearAllServices()
+                
+                clearResult.onSuccess { deletedCount ->
+                    Log.d("SearchViewModel", "Successfully cleared $deletedCount existing documents")
+                    
+                    // Step 2: Add all hardcoded services with descriptive IDs
+                    Log.d("SearchViewModel", "Step 2: Adding all hardcoded services")
+                    
+                    val allHardcodedServices = getAllHardcodedServices()
+                    Log.d("SearchViewModel", "Found ${allHardcodedServices.size} hardcoded services to add")
+                    
+                    // Debug: List all services that will be added
+                    allHardcodedServices.forEachIndexed { index, service ->
+                        Log.d("SearchViewModel", "Service ${index + 1}: ${service.organizationName} - ${service.groupName}")
+                    }
+                    
+                    var successCount = 0
+                    var failureCount = 0
+                    
+                    allHardcodedServices.forEach { service ->
+                        try {
+                            Log.d("SearchViewModel", "Adding service: ${service.organizationName} - ${service.groupName}")
+                            val result = repository.addService(service)
+                            result.onSuccess { id ->
+                                successCount++
+                                Log.d("SearchViewModel", "Successfully added service with ID: $id (Success count: $successCount)")
+                            }.onFailure { e ->
+                                failureCount++
+                                Log.e("SearchViewModel", "Failed to add service: ${e.message} (Failure count: $failureCount)")
+                            }
+                        } catch (e: Exception) {
+                            failureCount++
+                            Log.e("SearchViewModel", "Error adding service: ${e.message} (Failure count: $failureCount)")
+                        }
+                    }
+                    
+                    Log.d("SearchViewModel", "Final results: $successCount successful, $failureCount failed")
+                    
+                    // Step 3: Reload services
+                    Log.d("SearchViewModel", "Step 3: Reloading services")
+                    loadServices()
+                    
+                    Log.d("SearchViewModel", "Complete Firebase replacement finished successfully")
+                    
+                }.onFailure { e ->
+                    Log.e("SearchViewModel", "Failed to clear Firebase", e)
+                    _error.value = e
+                }
+                
+            } catch (e: Exception) {
+                Log.e("SearchViewModel", "Error in complete Firebase replacement", e)
+                _error.value = e
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
     suspend fun addService(service: Service) {
         try {
             Log.d("SearchViewModel", "Adding new service: ${service.organizationName} - ${service.groupName}")
@@ -938,5 +1485,11 @@ class SearchViewModel(
             Log.e("SearchViewModel", "Error adding service", e)
             throw e
         }
+    }
+
+    suspend fun deleteService(serviceId: String) {
+        repository.deleteService(serviceId)
+        // Remove from local list
+        _services.value = _services.value.filterNot { it.id == serviceId }
     }
 } 

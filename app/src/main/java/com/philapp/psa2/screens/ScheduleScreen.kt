@@ -1,18 +1,27 @@
 package com.philapp.psa2.screens
 
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.philapp.psa2.R
 import com.philapp.psa2.model.ServiceType
 import com.philapp.psa2.model.ContactInfo
 import com.philapp.psa2.model.ServiceStatus
 import com.philapp.psa2.model.Service
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.clickable
 
 enum class DayOfWeek {
     MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY
@@ -28,7 +37,8 @@ data class GroupSession(
     val name: String,
     val description: String,
     val capacity: Int? = null,
-    val requiresBooking: Boolean = false
+    val requiresBooking: Boolean = false,
+    val websiteUrl: String? = null
 )
 
 data class ScheduledGroup(
@@ -51,13 +61,15 @@ data class Service(
     val contact: ContactInfo? = null,
     val schedule: String? = null,
     val status: ServiceStatus = ServiceStatus.PENDING,
-    val isDuplicate: Boolean = false
+    val isDuplicate: Boolean = false,
+    val websiteUrl: String? = null
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ScheduleScreen(navController: NavController) {
     var selectedDay by remember { mutableStateOf(DayOfWeek.MONDAY) }
+    val context = LocalContext.current
 
     Column(
         modifier = Modifier
@@ -132,6 +144,8 @@ private fun DayTab(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SessionCard(session: ScheduledGroup) {
+    val context = LocalContext.current
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -152,6 +166,21 @@ private fun SessionCard(session: ScheduledGroup) {
                 text = "Location: ${session.location}",
                 style = MaterialTheme.typography.bodyMedium
             )
+            session.group.websiteUrl?.takeIf { it.isNotBlank() }?.let { url ->
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Website",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    text = url,
+                    style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.primary),
+                    modifier = Modifier.clickable {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                        context.startActivity(intent)
+                    }
+                )
+            }
         }
     }
 }
@@ -162,7 +191,8 @@ private fun getSampleSchedule(day: DayOfWeek): List<ScheduledGroup> {
         name = "Morning Support Group",
         description = "Start your day with peer support",
         capacity = 10,
-        requiresBooking = true
+        requiresBooking = true,
+        websiteUrl = "https://www.example.com/morning-support"
     )
 
     val afternoonSession = GroupSession(

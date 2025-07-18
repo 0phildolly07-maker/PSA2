@@ -20,6 +20,12 @@ import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.ui.text.style.TextOverflow
 import android.util.Log
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.items
 
 @Composable
 fun ResultsScreen(
@@ -175,8 +181,8 @@ private fun ServiceCard(
     service: Service,
     navController: NavController
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     Card(
-        onClick = { navController.navigate("details/${service.id}") },
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
@@ -249,6 +255,27 @@ private fun ServiceCard(
                         onClick = { },
                         label = { Text("+${service.features.size - 3}") }
                     )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+            Button(
+                onClick = { navController.navigate("details/${service.id}") },
+                modifier = Modifier.align(Alignment.End)
+            ) {
+                Text("More Info")
+            }
+
+            service.websiteUrl?.takeIf { it.isNotBlank() }?.let { url ->
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(
+                    onClick = {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                        context.startActivity(intent)
+                    },
+                    modifier = Modifier.padding(top = 8.dp)
+                ) {
+                    Text("Website")
                 }
             }
         }

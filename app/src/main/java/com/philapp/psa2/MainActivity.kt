@@ -19,6 +19,7 @@ import com.philapp.psa2.screens.ResultsScreen
 import com.philapp.psa2.screens.ServiceDetailsScreen
 import com.philapp.psa2.screens.AddServiceScreen
 import com.philapp.psa2.screens.AdminScreen
+import com.philapp.psa2.screens.EditServiceScreen
 import com.philapp.psa2.viewmodel.SearchViewModel
 import com.philapp.psa2.viewmodel.AdminViewModel
 import com.philapp.psa2.repository.ServiceRepository
@@ -65,7 +66,10 @@ class MainActivity : ComponentActivity() {
                 ) {
                     val navController = rememberNavController()
 
-                    NavHost(navController = navController, startDestination = "home") {
+                    NavHost(navController = navController, startDestination = "title") {
+                        composable("title") {
+                            com.philapp.psa2.screens.TitleScreen(navController = navController)
+                        }
                         composable("home") {
                             HomeScreen(
                                 navController = navController,
@@ -103,6 +107,26 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
+                        composable("custom_search") {
+                            com.philapp.psa2.screens.CustomSearchScreen(
+                                navController = navController,
+                                searchViewModel = searchViewModel
+                            )
+                        }
+
+                        composable(
+                            "location_selection/{searchQuery}",
+                            arguments = listOf(
+                                navArgument("searchQuery") { type = NavType.StringType }
+                            )
+                        ) { backStackEntry ->
+                            com.philapp.psa2.screens.LocationSelectionScreen(
+                                navController = navController,
+                                searchQuery = backStackEntry.arguments?.getString("searchQuery") ?: "",
+                                searchViewModel = searchViewModel
+                            )
+                        }
+
                         composable("details/{serviceId}") { backStackEntry ->
                             ServiceDetailsScreen(
                                 navController = navController,
@@ -125,6 +149,14 @@ class MainActivity : ComponentActivity() {
                                 viewModel = adminViewModel
                             )
                         }
+
+                        composable("edit_service/{serviceId}") { backStackEntry ->
+                            EditServiceScreen(
+                                navController = navController,
+                                serviceId = backStackEntry.arguments?.getString("serviceId") ?: "",
+                                viewModel = searchViewModel
+                            )
+                        }
                     }
                 }
             }
@@ -140,10 +172,35 @@ fun AppNavigation() {
 
     NavHost(
         navController = navController,
-        startDestination = "home"
+        startDestination = "title"
     ) {
+        composable("title") {
+            com.philapp.psa2.screens.TitleScreen(navController = navController)
+        }
         composable("home") { 
             HomeScreen(navController, searchViewModel) 
+        }
+        
+        // Add the missing custom search route
+        composable("custom_search") {
+            com.philapp.psa2.screens.CustomSearchScreen(
+                navController = navController,
+                searchViewModel = searchViewModel
+            )
+        }
+
+        // Add the missing location selection route
+        composable(
+            "location_selection/{searchQuery}",
+            arguments = listOf(
+                navArgument("searchQuery") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            com.philapp.psa2.screens.LocationSelectionScreen(
+                navController = navController,
+                searchQuery = backStackEntry.arguments?.getString("searchQuery") ?: "",
+                searchViewModel = searchViewModel
+            )
         }
         
         // Regular type-based search
@@ -205,6 +262,14 @@ fun AppNavigation() {
                 navController = navController,
                 searchViewModel = searchViewModel,
                 viewModel = adminViewModel
+            )
+        }
+
+        composable("edit_service/{serviceId}") { backStackEntry ->
+            EditServiceScreen(
+                navController = navController,
+                serviceId = backStackEntry.arguments?.getString("serviceId") ?: "",
+                viewModel = searchViewModel
             )
         }
     }

@@ -12,6 +12,9 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.philapp.psa2.model.ServiceType
 import com.philapp.psa2.viewmodel.SearchViewModel
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
+import com.philapp.psa2.model.AreaList
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -29,16 +32,26 @@ fun EditServiceScreen(
         return
     }
 
+    // Parse location to separate location details and town
+    val locationParts = service.location.split(", ").toMutableList()
+    val town = if (locationParts.size > 1) locationParts.removeLast() else ""
+    val locationDetails = locationParts.joinToString(", ")
+
     var organizationName by remember { mutableStateOf(service.organizationName) }
     var groupName by remember { mutableStateOf(service.groupName) }
-    var location by remember { mutableStateOf(service.location) }
+    var location by remember { mutableStateOf(locationDetails) }
+    var selectedTown by remember { mutableStateOf(town) }
+    var townExpanded by remember { mutableStateOf(false) }
     var description by remember { mutableStateOf(service.description) }
     var schedule by remember { mutableStateOf(service.schedule ?: "") }
     var contactPhone by remember { mutableStateOf(service.contact?.phone ?: "") }
     var contactEmail by remember { mutableStateOf(service.contact?.email ?: "") }
+    var websiteUrl by remember { mutableStateOf(service.websiteUrl ?: "") }
     
     var selectedTypes by remember { mutableStateOf(service.types.toSet()) }
     var features by remember { mutableStateOf(service.features) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
 
     Scaffold(
         topBar = {
@@ -80,9 +93,47 @@ fun EditServiceScreen(
             OutlinedTextField(
                 value = location,
                 onValueChange = { location = it },
-                label = { Text("Location") },
+                label = { Text("Location Details") },
+                placeholder = { Text("e.g., St.James Old School Building") },
                 modifier = Modifier.fillMaxWidth()
             )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Town dropdown
+            ExposedDropdownMenuBox(
+                expanded = townExpanded,
+                onExpandedChange = { townExpanded = !townExpanded },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                OutlinedTextField(
+                    value = selectedTown,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Town") },
+                    placeholder = { Text("Select a town") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = townExpanded) },
+                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor()
+                )
+
+                ExposedDropdownMenu(
+                    expanded = townExpanded,
+                    onDismissRequest = { townExpanded = false }
+                ) {
+                    AreaList.Lancashire_Areas.forEach { area ->
+                        DropdownMenuItem(
+                            text = { Text(area) },
+                            onClick = {
+                                selectedTown = area
+                                townExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
             
             Spacer(modifier = Modifier.height(8.dp))
             
@@ -111,7 +162,7 @@ fun EditServiceScreen(
                                 selectedTypes + type
                             }
                         },
-                        label = { Text(type.name.replace("_", " ")) }
+                        label = { Text(type.getDisplayName()) }
                     )
                 }
             }
@@ -146,25 +197,81 @@ fun EditServiceScreen(
             
             Spacer(modifier = Modifier.height(24.dp))
             
+            OutlinedTextField(
+                value = websiteUrl,
+                onValueChange = { websiteUrl = it },
+                label = { Text("Website URL") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
             Button(
                 onClick = {
+                    val fullLocation = if (location.isNotBlank() && selectedTown.isNotBlank()) {
+                        "$location, $selectedTown"
+                    } else if (location.isNotBlank()) {
+                        location
+                    } else if (selectedTown.isNotBlank()) {
+                        selectedTown
+                    } else {
+                        ""
+                    }
+                    
                     viewModel.updateService(
                         serviceId = service.id,
                         organizationName = organizationName,
                         groupName = groupName,
-                        location = location,
+                        location = fullLocation,
                         description = description,
                         types = selectedTypes.toList(),
                         features = features,
                         contactPhone = contactPhone.takeIf { it.isNotBlank() },
                         contactEmail = contactEmail.takeIf { it.isNotBlank() },
-                        schedule = schedule.takeIf { it.isNotBlank() }
+                        schedule = schedule.takeIf { it.isNotBlank() },
+                        websiteUrl = websiteUrl.takeIf { it.isNotBlank() }
                     )
                     navController.navigateUp()
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Save Changes")
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(
+                onClick = { showDeleteDialog = true },
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Delete Service", color = MaterialTheme.colorScheme.onError)
+            }
+
+            if (showDeleteDialog) {
+                AlertDialog(
+                    onDismissRequest = { showDeleteDialog = false },
+                    title = { Text("Delete Service") },
+                    text = { Text("Are you sure you want to delete this service? This action cannot be undone.") },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                showDeleteDialog = false
+                                coroutineScope.launch {
+                                    viewModel.deleteService(service.id)
+                                    navController.navigateUp()
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                        ) {
+                            Text("Delete", color = MaterialTheme.colorScheme.onError)
+                        }
+                    },
+                    dismissButton = {
+                        Button(onClick = { showDeleteDialog = false }) {
+                            Text("Cancel")
+                        }
+                    }
+                )
             }
         }
     }

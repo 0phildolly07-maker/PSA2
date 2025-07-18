@@ -16,6 +16,7 @@ import com.philapp.psa2.model.Service
 import com.philapp.psa2.model.ContactInfo
 import com.philapp.psa2.model.ServiceStatus
 import androidx.compose.ui.layout.Layout
+import com.philapp.psa2.model.AreaList
 
 data class LocationDetails(
     val addressLine1: String = "",
@@ -60,6 +61,7 @@ fun AddServiceScreen(
     var groupName by remember { mutableStateOf("") }
     var locationDetails by remember { mutableStateOf("") }
     var town by remember { mutableStateOf("") }
+    var townExpanded by remember { mutableStateOf(false) }
     var description by remember { mutableStateOf("") }
     var contactName by remember { mutableStateOf("") }
     var contactPhone by remember { mutableStateOf("") }
@@ -70,6 +72,47 @@ fun AddServiceScreen(
     var features by remember { mutableStateOf(listOf<String>()) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isSubmitting by remember { mutableStateOf(false) }
+    var websiteUrl by remember { mutableStateOf("") }
+    var duplicateWarning by remember { mutableStateOf<String?>(null) }
+
+    // Check for duplicates when organization, group name, or location changes
+    LaunchedEffect(organizationName, groupName, locationDetails, town) {
+        if (organizationName.isNotBlank() && groupName.isNotBlank()) {
+            val fullLocation = if (locationDetails.isNotBlank() && town.isNotBlank()) {
+                "$locationDetails, $town"
+            } else if (locationDetails.isNotBlank()) {
+                locationDetails
+            } else if (town.isNotBlank()) {
+                town
+            } else {
+                ""
+            }
+            
+            if (fullLocation.isNotBlank()) {
+                val duplicateInfo = searchViewModel.checkForDuplicateService(
+                    Service(
+                        id = "",
+                        organizationName = organizationName,
+                        groupName = groupName,
+                        location = fullLocation,
+                        description = "",
+                        types = emptyList(),
+                        features = emptyList()
+                    )
+                )
+                
+                if (duplicateInfo.isDuplicate) {
+                    duplicateWarning = "A service with the same name, organization, and location already exists"
+                } else {
+                    duplicateWarning = null
+                }
+            } else {
+                duplicateWarning = null
+            }
+        } else {
+            duplicateWarning = null
+        }
+    }
 
     val scope = rememberCoroutineScope()
 
@@ -115,10 +158,20 @@ fun AddServiceScreen(
             value = groupName,
             onValueChange = { groupName = it },
             label = { Text("Group/Program Name") },
-            placeholder = { Text("e.g., Get Crafty, No Excuse Boxing") },
+            placeholder = { Text("e.g., Walking Group") },
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true
+            singleLine = true,
+            isError = duplicateWarning != null
         )
+
+        if (duplicateWarning != null) {
+            Text(
+                text = "⚠️ $duplicateWarning",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(start = 16.dp, top = 4.dp)
+            )
+        }
 
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -147,14 +200,40 @@ fun AddServiceScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        OutlinedTextField(
-            value = town,
-            onValueChange = { town = it },
-            label = { Text("Town") },
-            placeholder = { Text("e.g., Accrington") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
+        // Town dropdown
+        ExposedDropdownMenuBox(
+            expanded = townExpanded,
+            onExpandedChange = { townExpanded = !townExpanded },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            OutlinedTextField(
+                value = town,
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Town") },
+                placeholder = { Text("Select a town") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = townExpanded) },
+                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor()
+            )
+
+            ExposedDropdownMenu(
+                expanded = townExpanded,
+                onDismissRequest = { townExpanded = false }
+            ) {
+                AreaList.Lancashire_Areas.forEach { area ->
+                    DropdownMenuItem(
+                        text = { Text(area) },
+                        onClick = {
+                            town = area
+                            townExpanded = false
+                        }
+                    )
+                }
+            }
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -171,7 +250,7 @@ fun AddServiceScreen(
                             selectedTypes + type
                         }
                     },
-                    label = { Text(type.name) }
+                    label = { Text(type.getDisplayName()) }
                 )
             }
         }
@@ -201,6 +280,15 @@ fun AddServiceScreen(
         )
 
         Spacer(modifier = Modifier.height(16.dp))
+
+        OutlinedTextField(
+            value = websiteUrl,
+            onValueChange = { websiteUrl = it },
+            label = { Text("Website URL") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
 
         // Schedule Section
         SectionHeader("Schedule", true)
@@ -281,7 +369,7 @@ fun AddServiceScreen(
                     }
 
                     val newService = Service(
-                        id = "", // Will be set by Firestore
+                        id = java.util.UUID.randomUUID().toString(),
                         organizationName = organizationName,
                         groupName = groupName,
                         location = fullLocation,
@@ -295,7 +383,8 @@ fun AddServiceScreen(
                             )
                         } else null,
                         schedule = if (schedule.isNotBlank()) schedule else null,
-                        status = ServiceStatus.PENDING
+                        status = ServiceStatus.PENDING,
+                        websiteUrl = websiteUrl.takeIf { it.isNotBlank() }
                     )
 
                     try {
@@ -324,6 +413,19 @@ fun AddServiceScreen(
             text = { Text(errorMessage!!) },
             confirmButton = {
                 TextButton(onClick = { errorMessage = null }) {
+                    Text("OK")
+                }
+            }
+        )
+    }
+
+    if (duplicateWarning != null) {
+        AlertDialog(
+            onDismissRequest = { duplicateWarning = null },
+            title = { Text("Duplicate Service") },
+            text = { Text(duplicateWarning!!) },
+            confirmButton = {
+                TextButton(onClick = { duplicateWarning = null }) {
                     Text("OK")
                 }
             }

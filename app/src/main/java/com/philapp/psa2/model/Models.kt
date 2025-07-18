@@ -11,7 +11,8 @@ data class Service(
     val contact: ContactInfo? = null,
     val schedule: String? = null,
     val status: ServiceStatus = ServiceStatus.PENDING,
-    val isDuplicate: Boolean = false
+    val isDuplicate: Boolean = false,
+    val websiteUrl: String? = null
 )
 
 data class ContactInfo(
@@ -41,4 +42,17 @@ sealed class SearchState {
     object Loading : SearchState()
     data class Success(val services: List<Service>) : SearchState()
     data class Error(val message: String) : SearchState()
+} 
+
+// Shared area list for consistent town selection across the app
+object AreaList {
+    val Lancashire_Areas = listOf(
+        "Accrington",
+        "Bacup", 
+        "Blackburn",
+        "Burnley",
+        "Colne",
+        "Nelson",
+        "Rawtenstall"
+    ).sorted() // Keep the list alphabetically sorted
 } 

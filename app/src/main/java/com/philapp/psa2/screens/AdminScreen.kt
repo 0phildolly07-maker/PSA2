@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.text.style.TextOverflow
 import android.util.Log
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,57 +34,73 @@ fun AdminScreen(
     val isLoading by searchViewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
     val statusUpdateState by viewModel.statusUpdateState.collectAsState()
-
-    LaunchedEffect(Unit) {
-        // Load pending services when screen is opened
-        viewModel.loadPendingServices()
-    }
-
-    val snackbarHostState = remember { SnackbarHostState() }
-    var showConfirmDialog by remember { mutableStateOf(false) }
-    var isAddingServices by remember { mutableStateOf(false) }
-
-    // Handle adding services state
-    LaunchedEffect(isAddingServices) {
-        if (isAddingServices) {
-            try {
-                searchViewModel.addAllServices()
-                snackbarHostState.showSnackbar("Successfully added sample services")
-                viewModel.loadPendingServices() // Reload pending services
-            } catch (e: Exception) {
-                snackbarHostState.showSnackbar(
-                    message = "Failed to add services: ${e.message}",
-                    actionLabel = "Retry",
-                    duration = SnackbarDuration.Long
-                ).let { result ->
-                    if (result == SnackbarResult.ActionPerformed) {
-                        isAddingServices = true // Retry
-                    }
-                }
-            } finally {
-                isAddingServices = false
-            }
+    val migrationState by viewModel.migrationState.collectAsState()
+    val firebaseCheckState by viewModel.firebaseCheckState.collectAsState()
+    
+    var showDuplicateSection by remember { mutableStateOf(false) }
+    val allServices by searchViewModel.services.collectAsState()
+    val duplicateServices by remember(allServices) {
+        derivedStateOf {
+            val services = allServices
+            val grouped = services.groupBy { Triple(it.organizationName, it.groupName, it.location) }
+            val duplicates = grouped.values.filter { it.size > 1 }
+            duplicates
         }
     }
 
-    if (showConfirmDialog) {
+    LaunchedEffect(Unit) {
+        viewModel.loadPendingServices()
+        searchViewModel.loadServices()
+    }
+
+    val snackbarHostState = remember { SnackbarHostState() }
+    var showDuplicateConfirmDialog by remember { mutableStateOf(false) }
+    
+    val scope = rememberCoroutineScope()
+
+    // Show migration feedback
+    LaunchedEffect(migrationState) {
+        migrationState?.onSuccess { count ->
+            snackbarHostState.showSnackbar("Successfully migrated $count documents to descriptive IDs")
+            viewModel.clearMigrationState()
+        }?.onFailure { e ->
+            snackbarHostState.showSnackbar("Migration failed: ${e.message}")
+            viewModel.clearMigrationState()
+        }
+    }
+
+    // Show Firebase check feedback
+    LaunchedEffect(firebaseCheckState) {
+        firebaseCheckState?.onSuccess { message ->
+            snackbarHostState.showSnackbar("Firebase Check: $message")
+            viewModel.clearFirebaseCheckState()
+        }?.onFailure { e ->
+            snackbarHostState.showSnackbar("Firebase check failed: ${e.message}")
+            viewModel.clearFirebaseCheckState()
+        }
+    }
+
+    if (showDuplicateConfirmDialog) {
         AlertDialog(
-            onDismissRequest = { showConfirmDialog = false },
-            title = { Text("Confirm Action") },
-            text = { Text("This will add all sample services to the database. Are you sure you want to continue?") },
+            onDismissRequest = { showDuplicateConfirmDialog = false },
+            title = { Text("Remove Duplicates") },
+            text = { Text("This will remove all duplicate services, keeping only the first occurrence of each. Are you sure you want to continue?") },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        showConfirmDialog = false
-                        isAddingServices = true
+                        showDuplicateConfirmDialog = false
+                        searchViewModel.removeDuplicateServices()
+                        scope.launch {
+                            snackbarHostState.showSnackbar("Removing duplicate services...")
+                        }
                     }
                 ) {
-                    Text("Yes")
+                    Text("Yes, Remove")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showConfirmDialog = false }) {
-                    Text("No")
+                TextButton(onClick = { showDuplicateConfirmDialog = false }) {
+                    Text("Cancel")
                 }
             }
         )
@@ -99,20 +116,71 @@ fun AdminScreen(
                     }
                 },
                 actions = {
-                    // Add sample services button with loading state
+                    // Add Replace Firebase button
                     Button(
-                        onClick = { showConfirmDialog = true },
+                        onClick = { 
+                            searchViewModel.replaceFirebaseWithHardcodedServices()
+                        },
                         modifier = Modifier.padding(end = 8.dp),
-                        enabled = !isAddingServices && !isLoading
+                        enabled = true,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error
+                        )
                     ) {
-                        if (isAddingServices) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(16.dp),
-                                color = MaterialTheme.colorScheme.onPrimary
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                        }
-                        Text(if (isAddingServices) "Adding..." else "Add Sample Services")
+                        Icon(Icons.Default.Delete, contentDescription = "Replace Firebase")
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Replace Firebase")
+                    }
+                    
+                    // Add Check Firebase button
+                    Button(
+                        onClick = { 
+                            viewModel.checkAndPopulateFirebase()
+                        },
+                        modifier = Modifier.padding(end = 8.dp),
+                        enabled = true,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.secondary
+                        )
+                    ) {
+                        Icon(Icons.Default.Info, contentDescription = "Check Firebase")
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Check Firebase")
+                    }
+                    
+                    // Existing Sync Services button
+                    Button(
+                        onClick = { 
+                            searchViewModel.syncAllServicesWithFirebase()
+                        },
+                        modifier = Modifier.padding(end = 8.dp),
+                        enabled = true,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary
+                        )
+                    ) {
+                        Icon(Icons.Default.Sync, contentDescription = "Sync")
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Sync Services")
+                    }
+                    
+                    // Existing Duplicates button
+                    Button(
+                        onClick = { 
+                            showDuplicateSection = !showDuplicateSection
+                        },
+                        modifier = Modifier.padding(end = 8.dp),
+                        enabled = true,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (duplicateServices.isNotEmpty()) 
+                                MaterialTheme.colorScheme.error 
+                            else 
+                                MaterialTheme.colorScheme.secondary
+                        )
+                    ) {
+                        Icon(Icons.Default.ContentCopy, contentDescription = "Duplicates")
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Duplicates (${duplicateServices.size})")
                     }
                 }
             )
@@ -124,7 +192,7 @@ fun AdminScreen(
                 .padding(padding)
         ) {
             when {
-                isLoading || isAddingServices -> {
+                isLoading -> {
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
@@ -137,7 +205,7 @@ fun AdminScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = if (isAddingServices) "Adding sample services..." else "Loading services...",
+                            text = "Loading services...",
                             style = MaterialTheme.typography.bodyLarge
                         )
                     }
@@ -175,48 +243,154 @@ fun AdminScreen(
                         }
                     }
                 }
-                pendingServices.isEmpty() -> {
+                pendingServices.isEmpty() && duplicateServices.isEmpty() -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "No pending services to review",
+                            text = "No pending services or duplicates to review",
                             style = MaterialTheme.typography.bodyLarge
                         )
                     }
                 }
                 else -> {
-                    LazyColumn(
+                    Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                            .padding(16.dp)
                     ) {
-                        items(
-                            items = pendingServices,
-                            key = { it.id }
-                        ) { service ->
-                            PendingServiceCard(
-                                service = service,
-                                onApprove = {
-                                    viewModel.approveService(service.id)
-                                },
-                                onReject = {
-                                    viewModel.rejectService(service.id)
+                        if (showDuplicateSection && duplicateServices.isNotEmpty()) {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.errorContainer
+                                )
+                            ) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                            text = "Duplicate Services (${duplicateServices.size} groups)",
+                                    style = MaterialTheme.typography.titleMedium,
+                                            color = MaterialTheme.colorScheme.onErrorContainer,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Button(
+                                            onClick = { showDuplicateConfirmDialog = true },
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = MaterialTheme.colorScheme.error
+                                            )
+                                        ) {
+                                            Icon(Icons.Default.Delete, contentDescription = "Remove All Duplicates")
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("Remove All")
+                                        }
+                                    }
+                                    
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    
+                                    duplicateServices.forEach { duplicateGroup ->
+                                        Card(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(vertical = 4.dp),
+                                            colors = CardDefaults.cardColors(
+                                                containerColor = MaterialTheme.colorScheme.surface
+                                            )
+                                        ) {
+                                            Column(modifier = Modifier.padding(12.dp)) {
+                                                Text(
+                                                    text = "Duplicate Group (${duplicateGroup.size} services):",
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = MaterialTheme.colorScheme.error
+                                                )
+                                                
+                                                Spacer(modifier = Modifier.height(4.dp))
+                                                
+                                                duplicateGroup.forEach { service ->
+                                                    Row(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                                        verticalAlignment = Alignment.CenterVertically
+                                                    ) {
+                                                        Column(modifier = Modifier.weight(1f)) {
+                                                            Text(
+                                                                text = "• ${service.organizationName} - ${service.groupName}",
+                                                                style = MaterialTheme.typography.bodySmall,
+                                                                color = MaterialTheme.colorScheme.onSurface
+                                                            )
+                                                            Text(
+                                                                text = "  Location: ${service.location}",
+                                                                style = MaterialTheme.typography.bodySmall,
+                                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                            )
+                                                        }
+                                                        Button(
+                                                            onClick = { 
+                                                                scope.launch {
+                                                                    searchViewModel.deleteService(service.id)
+                                                                    snackbarHostState.showSnackbar("Service deleted")
+                                                                }
+                                                            },
+                                                            colors = ButtonDefaults.buttonColors(
+                                                                containerColor = MaterialTheme.colorScheme.error
+                                                            ),
+                                                            modifier = Modifier.padding(start = 8.dp)
+                                                        ) {
+                                                            Icon(Icons.Default.Delete, contentDescription = "Delete", modifier = Modifier.size(16.dp))
+                                                        }
+                                                    }
+                                                    Spacer(modifier = Modifier.height(4.dp))
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
+                            }
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
+                        
+                        if (pendingServices.isNotEmpty()) {
+                            Text(
+                                text = "Pending Services (${pendingServices.size})",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(bottom = 8.dp)
                             )
+                            
+                        LazyColumn(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(
+                                items = pendingServices,
+                                key = { it.id }
+                            ) { service ->
+                                PendingServiceCard(
+                                    service = service,
+                                    onApprove = {
+                                        viewModel.approveService(service.id)
+                                    },
+                                    onReject = {
+                                        viewModel.rejectService(service.id)
+                                    }
+                                )
+                                }
+                            }
                         }
                     }
                 }
             }
 
-            // Show snackbar for status updates
             LaunchedEffect(statusUpdateState) {
                 statusUpdateState?.let { result ->
                     result.onSuccess {
                         snackbarHostState.showSnackbar("Service status updated successfully")
-                        // Reload services to reflect changes
                         viewModel.loadPendingServices()
                     }.onFailure { e ->
                         snackbarHostState.showSnackbar("Failed to update service status: ${e.message}")
@@ -232,128 +406,6 @@ fun AdminScreen(
     }
 }
 
-@Composable
-private fun EmptyStateMessage(message: String) {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = message,
-            style = MaterialTheme.typography.bodyLarge
-        )
-    }
-}
-
-@Composable
-private fun ServicesList(
-    services: List<Service>,
-    onApprove: (Service) -> Unit,
-    onReject: (Service) -> Unit,
-    onEdit: (Service) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        items(services) { service ->
-            ServiceCard(
-                service = service,
-                onApprove = { onApprove(service) },
-                onReject = { onReject(service) },
-                onEdit = { onEdit(service) }
-            )
-        }
-    }
-}
-
-@Composable
-private fun ServiceCard(
-    service: Service,
-    onApprove: () -> Unit,
-    onReject: () -> Unit,
-    onEdit: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(8.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Text(
-                text = service.groupName,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = service.organizationName,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = service.description,
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Location: ${service.location}",
-                style = MaterialTheme.typography.bodyMedium
-            )
-            service.schedule?.let { schedule ->
-                Text(
-                    text = "Schedule: $schedule",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                Button(
-                    onClick = onApprove,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    ),
-                    enabled = service.status != ServiceStatus.APPROVED
-                ) {
-                    Text("Approve")
-                }
-                Button(
-                    onClick = onReject,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error
-                    ),
-                    enabled = service.status != ServiceStatus.REJECTED
-                ) {
-                    Text("Reject")
-                }
-                Button(
-                    onClick = onEdit,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.secondary
-                    )
-                ) {
-                    Text("Edit")
-                }
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PendingServiceCard(
     service: Service,
