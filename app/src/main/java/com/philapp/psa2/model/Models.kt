@@ -5,6 +5,7 @@ data class Service(
     val organizationName: String,
     val groupName: String,
     val location: String,
+    val town: String = "",
     val description: String,
     val types: List<ServiceType>,
     val features: List<String>,

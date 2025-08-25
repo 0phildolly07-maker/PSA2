@@ -66,10 +66,7 @@ class MainActivity : ComponentActivity() {
                 ) {
                     val navController = rememberNavController()
 
-                    NavHost(navController = navController, startDestination = "title") {
-                        composable("title") {
-                            com.philapp.psa2.screens.TitleScreen(navController = navController)
-                        }
+                    NavHost(navController = navController, startDestination = "home") {
                         composable("home") {
                             HomeScreen(
                                 navController = navController,
@@ -104,26 +101,6 @@ class MainActivity : ComponentActivity() {
                                 searchViewModel = searchViewModel,
                                 customSearch = backStackEntry.arguments?.getString("search"),
                                 location = backStackEntry.arguments?.getString("location")
-                            )
-                        }
-
-                        composable("custom_search") {
-                            com.philapp.psa2.screens.CustomSearchScreen(
-                                navController = navController,
-                                searchViewModel = searchViewModel
-                            )
-                        }
-
-                        composable(
-                            "location_selection/{searchQuery}",
-                            arguments = listOf(
-                                navArgument("searchQuery") { type = NavType.StringType }
-                            )
-                        ) { backStackEntry ->
-                            com.philapp.psa2.screens.LocationSelectionScreen(
-                                navController = navController,
-                                searchQuery = backStackEntry.arguments?.getString("searchQuery") ?: "",
-                                searchViewModel = searchViewModel
                             )
                         }
 
@@ -164,114 +141,5 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@Composable
-fun AppNavigation() {
-    val navController = rememberNavController()
-    val searchViewModel: SearchViewModel = viewModel()
-    val adminViewModel: AdminViewModel = viewModel()
 
-    NavHost(
-        navController = navController,
-        startDestination = "title"
-    ) {
-        composable("title") {
-            com.philapp.psa2.screens.TitleScreen(navController = navController)
-        }
-        composable("home") { 
-            HomeScreen(navController, searchViewModel) 
-        }
-        
-        // Add the missing custom search route
-        composable("custom_search") {
-            com.philapp.psa2.screens.CustomSearchScreen(
-                navController = navController,
-                searchViewModel = searchViewModel
-            )
-        }
-
-        // Add the missing location selection route
-        composable(
-            "location_selection/{searchQuery}",
-            arguments = listOf(
-                navArgument("searchQuery") { type = NavType.StringType }
-            )
-        ) { backStackEntry ->
-            com.philapp.psa2.screens.LocationSelectionScreen(
-                navController = navController,
-                searchQuery = backStackEntry.arguments?.getString("searchQuery") ?: "",
-                searchViewModel = searchViewModel
-            )
-        }
-        
-        // Regular type-based search
-        composable(
-            "results/{type}/{location}",
-            arguments = listOf(
-                navArgument("type") { type = NavType.StringType },
-                navArgument("location") { type = NavType.StringType }
-            )
-        ) { backStackEntry ->
-            ResultsScreen(
-                navController = navController,
-                type = backStackEntry.arguments?.getString("type")?.let { 
-                    ServiceType.valueOf(it)
-                },
-                location = backStackEntry.arguments?.getString("location"),
-                searchViewModel = searchViewModel
-            )
-        }
-
-        // Custom search
-        composable(
-            "results/custom/{search}/{location}",
-            arguments = listOf(
-                navArgument("search") { type = NavType.StringType },
-                navArgument("location") { type = NavType.StringType }
-            )
-        ) { backStackEntry ->
-            ResultsScreen(
-                navController = navController,
-                customSearch = backStackEntry.arguments?.getString("search"),
-                location = backStackEntry.arguments?.getString("location"),
-                searchViewModel = searchViewModel
-            )
-        }
-        
-        composable(
-            "details/{serviceId}",
-            arguments = listOf(
-                navArgument("serviceId") { type = NavType.StringType }
-            )
-        ) { backStackEntry ->
-            ServiceDetailsScreen(
-                navController = navController,
-                serviceId = backStackEntry.arguments?.getString("serviceId") ?: "",
-                searchViewModel = searchViewModel
-            )
-        }
-
-        composable("add_service") {
-            AddServiceScreen(
-                navController = navController,
-                searchViewModel = searchViewModel
-            )
-        }
-
-        composable("admin") {
-            AdminScreen(
-                navController = navController,
-                searchViewModel = searchViewModel,
-                viewModel = adminViewModel
-            )
-        }
-
-        composable("edit_service/{serviceId}") { backStackEntry ->
-            EditServiceScreen(
-                navController = navController,
-                serviceId = backStackEntry.arguments?.getString("serviceId") ?: "",
-                viewModel = searchViewModel
-            )
-        }
-    }
-}
 

@@ -41,10 +41,12 @@ fun ResultsScreen(
     val error by searchViewModel.error.collectAsState()
 
     LaunchedEffect(type, customSearch, location) {
+        // Handle "all" location parameter - pass null to search all locations
+        val searchLocation = if (location == "all") null else location
         searchViewModel.searchServices(
             query = customSearch ?: "",
             type = type,
-            location = location ?: ""
+            location = searchLocation
         )
     }
 
@@ -58,7 +60,13 @@ fun ResultsScreen(
                 title = {
                     Text(
                         text = when {
-                            customSearch != null -> "Results for '$customSearch'"
+                            customSearch != null -> {
+                                if (location == "all") {
+                                    "Results for '$customSearch' (All Locations)"
+                                } else {
+                                    "Results for '$customSearch'"
+                                }
+                            }
                             else -> type?.name?.replace("_", " ") ?: "All Services"
                         },
                         maxLines = 1,
@@ -83,24 +91,53 @@ fun ResultsScreen(
                     .fillMaxSize()
                     .padding(16.dp)
             ) {
-                // Location search field
-                OutlinedTextField(
-                    value = locationText,
-                    onValueChange = { newLocation -> 
-                        locationText = newLocation
-                        searchViewModel.searchServices(
-                            query = customSearch ?: "",
-                            type = type,
-                            location = newLocation
-                        )
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Location") },
-                    leadingIcon = { Icon(Icons.Default.LocationOn, contentDescription = "Location") },
-                    singleLine = true
-                )
+                // Location search field - only show if not searching all locations
+                if (location != "all") {
+                    OutlinedTextField(
+                        value = locationText,
+                        onValueChange = { newLocation -> 
+                            locationText = newLocation
+                            searchViewModel.searchServices(
+                                query = customSearch ?: "",
+                                type = type,
+                                location = newLocation
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Location") },
+                        leadingIcon = { Icon(Icons.Default.LocationOn, contentDescription = "Location") },
+                        singleLine = true
+                    )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
+                } else {
+                    // Show a message that we're searching all locations
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.LocationOn,
+                                contentDescription = "All Locations",
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Searching all locations for '$customSearch'",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
 
                 when {
                     error != null -> {

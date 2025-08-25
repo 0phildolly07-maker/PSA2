@@ -116,18 +116,25 @@ fun ServiceDetailsScreen(
                     )
                 }
             }
-            // Website button below contact info
-            websiteUrl?.let { url ->
+            // Website button or fallback message
+            if (!service.websiteUrl.isNullOrBlank()) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Button(
                     onClick = {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(service.websiteUrl))
                         context.startActivity(intent)
                     },
                     modifier = Modifier.padding(top = 8.dp)
                 ) {
                     Text("Website")
                 }
+            } else {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Website information not available",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
             // Add Update Service button
             Spacer(modifier = Modifier.height(24.dp))
