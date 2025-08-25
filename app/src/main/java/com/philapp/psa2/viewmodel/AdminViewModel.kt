@@ -32,8 +32,30 @@ class AdminViewModel(
     private val _replaceFirebaseState = MutableStateFlow<Result<String>?>(null)
     val replaceFirebaseState: StateFlow<Result<String>?> = _replaceFirebaseState
 
+    // Add Firebase service count state
+    private val _firebaseServiceCount = MutableStateFlow<Int?>(null)
+    val firebaseServiceCount: StateFlow<Int?> = _firebaseServiceCount
+
+    // Add duplicate analysis state
+    private val _duplicateAnalysis = MutableStateFlow<DuplicateAnalysis?>(null)
+    val duplicateAnalysis: StateFlow<DuplicateAnalysis?> = _duplicateAnalysis
+
+    data class DuplicateAnalysis(
+        val totalServices: Int,
+        val uniqueServices: Int,
+        val duplicateGroups: List<DuplicateGroup>,
+        val summary: String
+    )
+
+    data class DuplicateGroup(
+        val key: String,
+        val services: List<Service>,
+        val count: Int
+    )
+
     init {
         loadPendingServices()
+        loadFirebaseServiceCount()
     }
 
     fun loadPendingServices() {
@@ -46,6 +68,88 @@ class AdminViewModel(
                     _pendingServices.value = services
                 }
         }
+    }
+
+    // Add function to load Firebase service count
+    fun loadFirebaseServiceCount() {
+        viewModelScope.launch {
+            try {
+                Log.d("AdminViewModel", "Loading Firebase service count")
+                serviceRepository.getAllServices()
+                    .catch { e ->
+                        Log.e("AdminViewModel", "Error loading Firebase service count", e)
+                        _firebaseServiceCount.value = null
+                    }
+                    .collect { services ->
+                        Log.d("AdminViewModel", "Firebase service count: ${services.size}")
+                        _firebaseServiceCount.value = services.size
+                    }
+            } catch (e: Exception) {
+                Log.e("AdminViewModel", "Error loading Firebase service count", e)
+                _firebaseServiceCount.value = null
+            }
+        }
+    }
+
+    // Add function to analyze duplicates
+    fun analyzeDuplicates(allServices: List<Service>) {
+        viewModelScope.launch {
+            try {
+                Log.d("AdminViewModel", "Analyzing duplicates for ${allServices.size} services")
+                
+                // Group services by organization, group name, and location
+                val grouped = allServices.groupBy { service ->
+                    "${service.organizationName.lowercase().trim()}|${service.groupName.lowercase().trim()}|${service.location.lowercase().trim()}"
+                }
+                
+                // Find groups with more than one service
+                val duplicateGroups = grouped.values
+                    .filter { it.size > 1 }
+                    .map { services ->
+                        val firstService = services.first()
+                        val key = "${firstService.organizationName} - ${firstService.groupName} - ${firstService.location}"
+                        DuplicateGroup(key, services, services.size)
+                    }
+                    .sortedByDescending { it.count }
+                
+                val totalServices = allServices.size
+                val uniqueServices = grouped.size
+                val duplicateCount = duplicateGroups.sumOf { it.count - 1 }
+                
+                val summary = buildString {
+                    appendLine(" Duplicate Analysis Summary")
+                    appendLine("Total Services: $totalServices")
+                    appendLine("Unique Services: $uniqueServices")
+                    appendLine("Duplicate Services: $duplicateCount")
+                    appendLine("Duplicate Groups: ${duplicateGroups.size}")
+                    
+                    if (duplicateGroups.isNotEmpty()) {
+                        appendLine("\n🔍 Duplicate Groups:")
+                        duplicateGroups.forEach { group ->
+                            appendLine("• ${group.key} (${group.count} copies)")
+                        }
+                    }
+                }
+                
+                val analysis = DuplicateAnalysis(
+                    totalServices = totalServices,
+                    uniqueServices = uniqueServices,
+                    duplicateGroups = duplicateGroups,
+                    summary = summary
+                )
+                
+                _duplicateAnalysis.value = analysis
+                Log.d("AdminViewModel", "Duplicate analysis completed: $summary")
+                
+            } catch (e: Exception) {
+                Log.e("AdminViewModel", "Error analyzing duplicates", e)
+                _error.value = "Error analyzing duplicates: ${e.message}"
+            }
+        }
+    }
+
+    fun clearDuplicateAnalysis() {
+        _duplicateAnalysis.value = null
     }
 
     fun updateServiceStatus(serviceId: String, newStatus: ServiceStatus) {
@@ -84,6 +188,7 @@ class AdminViewModel(
                     Log.d("AdminViewModel", "Successfully migrated $count documents to descriptive IDs")
                     // Reload services after migration
                     loadPendingServices()
+                    loadFirebaseServiceCount()
                 }.onFailure { e ->
                     Log.e("AdminViewModel", "Failed to migrate documents", e)
                     _error.value = "Failed to migrate documents: ${e.message}"
@@ -111,6 +216,8 @@ class AdminViewModel(
                 result.onSuccess { message ->
                     Log.d("AdminViewModel", "Firebase check result: $message")
                     _error.value = null
+                    // Reload Firebase count after check
+                    loadFirebaseServiceCount()
                 }.onFailure { e ->
                     Log.e("AdminViewModel", "Failed to check Firebase", e)
                     _error.value = "Failed to check Firebase: ${e.message}"
@@ -138,6 +245,8 @@ class AdminViewModel(
                 result.onSuccess { message ->
                     Log.d("AdminViewModel", "Firebase replacement result: $message")
                     _error.value = null
+                    // Reload Firebase count after replacement
+                    loadFirebaseServiceCount()
                 }.onFailure { e ->
                     Log.e("AdminViewModel", "Failed to replace Firebase", e)
                     _error.value = "Failed to replace Firebase: ${e.message}"

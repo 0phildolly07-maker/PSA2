@@ -36,8 +36,12 @@ fun AdminScreen(
     val statusUpdateState by viewModel.statusUpdateState.collectAsState()
     val migrationState by viewModel.migrationState.collectAsState()
     val firebaseCheckState by viewModel.firebaseCheckState.collectAsState()
+    val firebaseServiceCount by viewModel.firebaseServiceCount.collectAsState()
+    val duplicateAnalysis by viewModel.duplicateAnalysis.collectAsState()
     
     var showDuplicateSection by remember { mutableStateOf(false) }
+    var showDuplicateAnalysis by remember { mutableStateOf(false) }
+    var showActionButtons by remember { mutableStateOf(false) }
     val allServices by searchViewModel.services.collectAsState()
     val duplicateServices by remember(allServices) {
         derivedStateOf {
@@ -50,7 +54,15 @@ fun AdminScreen(
 
     LaunchedEffect(Unit) {
         viewModel.loadPendingServices()
+        viewModel.loadFirebaseServiceCount()
         searchViewModel.loadServices()
+    }
+
+    // Auto-analyze duplicates when services change
+    LaunchedEffect(allServices) {
+        if (allServices.isNotEmpty()) {
+            viewModel.analyzeDuplicates(allServices)
+        }
     }
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -116,71 +128,11 @@ fun AdminScreen(
                     }
                 },
                 actions = {
-                    // Add Replace Firebase button
-                    Button(
-                        onClick = { 
-                            searchViewModel.replaceFirebaseWithHardcodedServices()
-                        },
-                        modifier = Modifier.padding(end = 8.dp),
-                        enabled = true,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.error
-                        )
+                    // Menu button to show/hide action buttons
+                    IconButton(
+                        onClick = { showActionButtons = !showActionButtons }
                     ) {
-                        Icon(Icons.Default.Delete, contentDescription = "Replace Firebase")
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Replace Firebase")
-                    }
-                    
-                    // Add Check Firebase button
-                    Button(
-                        onClick = { 
-                            viewModel.checkAndPopulateFirebase()
-                        },
-                        modifier = Modifier.padding(end = 8.dp),
-                        enabled = true,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.secondary
-                        )
-                    ) {
-                        Icon(Icons.Default.Info, contentDescription = "Check Firebase")
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Check Firebase")
-                    }
-                    
-                    // Existing Sync Services button
-                    Button(
-                        onClick = { 
-                            searchViewModel.syncAllServicesWithFirebase()
-                        },
-                        modifier = Modifier.padding(end = 8.dp),
-                        enabled = true,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary
-                        )
-                    ) {
-                        Icon(Icons.Default.Sync, contentDescription = "Sync")
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Sync Services")
-                    }
-                    
-                    // Existing Duplicates button
-                    Button(
-                        onClick = { 
-                            showDuplicateSection = !showDuplicateSection
-                        },
-                        modifier = Modifier.padding(end = 8.dp),
-                        enabled = true,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (duplicateServices.isNotEmpty()) 
-                                MaterialTheme.colorScheme.error 
-                            else 
-                                MaterialTheme.colorScheme.secondary
-                        )
-                    ) {
-                        Icon(Icons.Default.ContentCopy, contentDescription = "Duplicates")
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Duplicates (${duplicateServices.size})")
+                        Icon(Icons.Default.MoreVert, contentDescription = "More Actions")
                     }
                 }
             )
@@ -243,7 +195,7 @@ fun AdminScreen(
                         }
                     }
                 }
-                pendingServices.isEmpty() && duplicateServices.isEmpty() -> {
+                pendingServices.isEmpty() && duplicateServices.isEmpty() && !showDuplicateAnalysis && !showActionButtons -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
@@ -260,6 +212,299 @@ fun AdminScreen(
                             .fillMaxSize()
                             .padding(16.dp)
                     ) {
+                        // Action buttons section (shown when menu is toggled)
+                        if (showActionButtons) {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                )
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(16.dp)
+                                ) {
+                                    Text(
+                                        text = "Admin Actions",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(bottom = 12.dp)
+                                    )
+                                    
+                                    // First row of buttons
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        // Analyze Duplicates button
+                                        Button(
+                                            onClick = { 
+                                                showDuplicateAnalysis = !showDuplicateAnalysis
+                                                showActionButtons = false
+                                            },
+                                            modifier = Modifier.weight(1f),
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = if (duplicateAnalysis?.duplicateGroups?.isNotEmpty() == true) 
+                                                    MaterialTheme.colorScheme.error 
+                                                else 
+                                                    MaterialTheme.colorScheme.tertiary
+                                            )
+                                        ) {
+                                            Icon(Icons.Default.Analytics, contentDescription = "Analyze")
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("Analyze", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        }
+                                        
+                                        // Duplicates button
+                                        Button(
+                                            onClick = { 
+                                                showDuplicateSection = !showDuplicateSection
+                                                showActionButtons = false
+                                            },
+                                            modifier = Modifier.weight(1f),
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = if (duplicateServices.isNotEmpty()) 
+                                                    MaterialTheme.colorScheme.error 
+                                                else 
+                                                    MaterialTheme.colorScheme.secondary
+                                            )
+                                        ) {
+                                            Icon(Icons.Default.ContentCopy, contentDescription = "Duplicates")
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("Duplicates", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        }
+                                    }
+                                    
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    
+                                    // Second row of buttons
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        // Sync Services button
+                                        Button(
+                                            onClick = { 
+                                                searchViewModel.syncAllServicesWithFirebase()
+                                                showActionButtons = false
+                                            },
+                                            modifier = Modifier.weight(1f),
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = MaterialTheme.colorScheme.primary
+                                            )
+                                        ) {
+                                            Icon(Icons.Default.Sync, contentDescription = "Sync")
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("Sync", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        }
+                                        
+                                        // Check Firebase button
+                                        Button(
+                                            onClick = { 
+                                                viewModel.checkAndPopulateFirebase()
+                                                showActionButtons = false
+                                            },
+                                            modifier = Modifier.weight(1f),
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = MaterialTheme.colorScheme.secondary
+                                            )
+                                        ) {
+                                            Icon(Icons.Default.Info, contentDescription = "Check")
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("Check", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        }
+                                    }
+                                    
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    
+                                    // Third row - Replace Firebase button (full width due to destructive nature)
+                                    Button(
+                                        onClick = { 
+                                            searchViewModel.replaceFirebaseWithHardcodedServices()
+                                            showActionButtons = false
+                                        },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.error
+                                        )
+                                    ) {
+                                        Icon(Icons.Default.Delete, contentDescription = "Replace Firebase")
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Replace Firebase")
+                                    }
+                                }
+                            }
+                            
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
+
+                        // Add service count information at the top
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp)
+                            ) {
+                                Text(
+                                    text = "Service Counts",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column {
+                                        Text(
+                                            text = "App Services",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                                        )
+                                        Text(
+                                            text = "${allServices.size}",
+                                            style = MaterialTheme.typography.headlineSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                                        )
+                                    }
+                                    Column(
+                                        horizontalAlignment = Alignment.End
+                                    ) {
+                                        Text(
+                                            text = "Firebase Services",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                                        )
+                                        Text(
+                                            text = firebaseServiceCount?.toString() ?: "Loading...",
+                                            style = MaterialTheme.typography.headlineSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                                        )
+                                    }
+                                }
+                                
+                                // Add duplicate analysis summary if available
+                                duplicateAnalysis?.let { analysis ->
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Divider(color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.3f))
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Column {
+                                            Text(
+                                                text = "Unique Services",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                                            )
+                                            Text(
+                                                text = "${analysis.uniqueServices}",
+                                                style = MaterialTheme.typography.headlineSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                                            )
+                                        }
+                                        Column(
+                                            horizontalAlignment = Alignment.End
+                                        ) {
+                                            Text(
+                                                text = "Duplicates",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                                            )
+                                            Text(
+                                                text = "${analysis.totalServices - analysis.uniqueServices}",
+                                                style = MaterialTheme.typography.headlineSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (analysis.totalServices > analysis.uniqueServices) 
+                                                    MaterialTheme.colorScheme.error 
+                                                else 
+                                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Show duplicate analysis if requested
+                        if (showDuplicateAnalysis && duplicateAnalysis != null) {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                                )
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(16.dp)
+                                ) {
+                                    Text(
+                                        text = "Duplicate Analysis",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onTertiaryContainer
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = duplicateAnalysis!!.summary,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onTertiaryContainer
+                                    )
+                                    
+                                    if (duplicateAnalysis!!.duplicateGroups.isNotEmpty()) {
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                        Text(
+                                            text = "Duplicate Groups:",
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        
+                                        LazyColumn(
+                                            modifier = Modifier.heightIn(max = 200.dp)
+                                        ) {
+                                            items(duplicateAnalysis!!.duplicateGroups) { group ->
+                                                Card(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .padding(vertical = 2.dp),
+                                                    colors = CardDefaults.cardColors(
+                                                        containerColor = MaterialTheme.colorScheme.surface
+                                                    )
+                                                ) {
+                                                    Column(
+                                                        modifier = Modifier.padding(8.dp)
+                                                    ) {
+                                                        Text(
+                                                            text = group.key,
+                                                            style = MaterialTheme.typography.bodyMedium,
+                                                            fontWeight = FontWeight.Medium
+                                                        )
+                                                        Text(
+                                                            text = "${group.count} copies found",
+                                                            style = MaterialTheme.typography.bodySmall,
+                                                            color = MaterialTheme.colorScheme.error
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
+
                         if (showDuplicateSection && duplicateServices.isNotEmpty()) {
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
@@ -272,10 +517,10 @@ fun AdminScreen(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
+                                    ) {
+                                        Text(
                                             text = "Duplicate Services (${duplicateServices.size} groups)",
-                                    style = MaterialTheme.typography.titleMedium,
+                                            style = MaterialTheme.typography.titleMedium,
                                             color = MaterialTheme.colorScheme.onErrorContainer,
                                             fontWeight = FontWeight.Bold
                                         )
@@ -304,54 +549,31 @@ fun AdminScreen(
                                         ) {
                                             Column(modifier = Modifier.padding(12.dp)) {
                                                 Text(
-                                                    text = "Duplicate Group (${duplicateGroup.size} services):",
+                                                    text = "Group: ${duplicateGroup.first().groupName}",
                                                     style = MaterialTheme.typography.bodyMedium,
-                                                    fontWeight = FontWeight.Bold,
+                                                    fontWeight = FontWeight.Medium
+                                                )
+                                                Text(
+                                                    text = "Organization: ${duplicateGroup.first().organizationName}",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                                )
+                                                Text(
+                                                    text = "Location: ${duplicateGroup.first().location}",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                                )
+                                                Text(
+                                                    text = "Count: ${duplicateGroup.size}",
+                                                    style = MaterialTheme.typography.bodySmall,
                                                     color = MaterialTheme.colorScheme.error
                                                 )
-                                                
-                                                Spacer(modifier = Modifier.height(4.dp))
-                                                
-                                                duplicateGroup.forEach { service ->
-                                                    Row(
-                                                        modifier = Modifier.fillMaxWidth(),
-                                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                                        verticalAlignment = Alignment.CenterVertically
-                                                    ) {
-                                                        Column(modifier = Modifier.weight(1f)) {
-                                                            Text(
-                                                                text = "• ${service.organizationName} - ${service.groupName}",
-                                                                style = MaterialTheme.typography.bodySmall,
-                                                                color = MaterialTheme.colorScheme.onSurface
-                                                            )
-                                                            Text(
-                                                                text = "  Location: ${service.location}",
-                                                                style = MaterialTheme.typography.bodySmall,
-                                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                            )
-                                                        }
-                                                        Button(
-                                                            onClick = { 
-                                                                scope.launch {
-                                                                    searchViewModel.deleteService(service.id)
-                                                                    snackbarHostState.showSnackbar("Service deleted")
-                                                                }
-                                                            },
-                                                            colors = ButtonDefaults.buttonColors(
-                                                                containerColor = MaterialTheme.colorScheme.error
-                                                            ),
-                                                            modifier = Modifier.padding(start = 8.dp)
-                                                        ) {
-                                                            Icon(Icons.Default.Delete, contentDescription = "Delete", modifier = Modifier.size(16.dp))
-                                                        }
-                                                    }
-                                                    Spacer(modifier = Modifier.height(4.dp))
-                                                }
                                             }
                                         }
                                     }
                                 }
                             }
+                            
                             Spacer(modifier = Modifier.height(16.dp))
                         }
                         
@@ -363,23 +585,23 @@ fun AdminScreen(
                                 modifier = Modifier.padding(bottom = 8.dp)
                             )
                             
-                        LazyColumn(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            items(
-                                items = pendingServices,
-                                key = { it.id }
-                            ) { service ->
-                                PendingServiceCard(
-                                    service = service,
-                                    onApprove = {
-                                        viewModel.approveService(service.id)
-                                    },
-                                    onReject = {
-                                        viewModel.rejectService(service.id)
-                                    }
-                                )
+                            LazyColumn(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                items(
+                                    items = pendingServices,
+                                    key = { it.id }
+                                ) { service ->
+                                    PendingServiceCard(
+                                        service = service,
+                                        onApprove = {
+                                            viewModel.approveService(service.id)
+                                        },
+                                        onReject = {
+                                            viewModel.rejectService(service.id)
+                                        }
+                                    )
                                 }
                             }
                         }
