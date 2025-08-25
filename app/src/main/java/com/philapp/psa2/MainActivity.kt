@@ -20,6 +20,7 @@ import com.philapp.psa2.screens.ServiceDetailsScreen
 import com.philapp.psa2.screens.AddServiceScreen
 import com.philapp.psa2.screens.AdminScreen
 import com.philapp.psa2.screens.EditServiceScreen
+import com.philapp.psa2.screens.TitleScreen
 import com.philapp.psa2.viewmodel.SearchViewModel
 import com.philapp.psa2.viewmodel.AdminViewModel
 import com.philapp.psa2.repository.ServiceRepository
@@ -28,6 +29,7 @@ import com.philapp.psa2.model.ServiceType
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.philapp.psa2.screens.LocationSelectionScreen
 
 class MainActivity : ComponentActivity() {
     private lateinit var searchViewModel: SearchViewModel
@@ -66,12 +68,20 @@ class MainActivity : ComponentActivity() {
                 ) {
                     val navController = rememberNavController()
 
-                    NavHost(navController = navController, startDestination = "home") {
+                    NavHost(navController = navController, startDestination = "title") {
+                        composable("title") {
+                            TitleScreen(navController = navController)
+                        }
                         composable("home") {
                             HomeScreen(
                                 navController = navController,
                                 searchViewModel = searchViewModel
                             )
+                        }
+
+                        // Add the missing custom_search route
+                        composable("custom_search") {
+                            LocationSelectionScreen(navController = navController)
                         }
 
                         composable(
