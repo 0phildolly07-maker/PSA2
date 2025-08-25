@@ -1431,6 +1431,93 @@ class SearchViewModel(
                 contact = ContactInfo(phone = "01282 877640", email = "stphilipsnelson@gmail.com"),
                 schedule = "Tuesday 11:00 – 13:00",
                 status = ServiceStatus.PENDING
+            ),
+            
+            // Additional Food Bank Services - 7 new services
+            Service(
+                id = UUID.randomUUID().toString(),
+                organizationName = "Church on the Street (COTS)",
+                groupName = "Food Bank",
+                location = "Bethesda Street, Burnley",
+                description = "Food Bank service providing emergency food support to the community.",
+                types = listOf(ServiceType.FOOD_BANKS, ServiceType.PRACTICAL),
+                features = listOf("Emergency food", "Community support", "Food Bank"),
+                contact = ContactInfo(phone = "01282 222203", email = ""),
+                schedule = "Monday, Tuesday, Wednesday, Thursday, Friday, Sunday (Daily)",
+                status = ServiceStatus.PENDING,
+                websiteUrl = "https://www.cots-ministries.co.uk"
+            ),
+            Service(
+                id = UUID.randomUUID().toString(),
+                organizationName = "Clayton Baptist Church",
+                groupName = "Food Bank",
+                location = "54 Sparth Rd, Clayton-le-Moors, Accrington BB5 5PZ",
+                description = "Food Bank service providing emergency food support to the community.",
+                types = listOf(ServiceType.FOOD_BANKS, ServiceType.PRACTICAL),
+                features = listOf("Emergency food", "Community support", "Food Bank"),
+                contact = ContactInfo(phone = "07834724530", email = ""),
+                schedule = "Monday, Tuesday, Wednesday, Thursday, Friday (Daily) - After 2pm",
+                status = ServiceStatus.PENDING
+            ),
+            Service(
+                id = UUID.randomUUID().toString(),
+                organizationName = "Gannow Community Centre",
+                groupName = "Food Bank",
+                location = "Adamson St, Burnley BB12 6RB",
+                description = "Food Bank service. You can call in to the centre on Adamson Street to collect your parcel but it would be helpful if you phone us first. Pet food is sometimes available.",
+                types = listOf(ServiceType.FOOD_BANKS, ServiceType.PRACTICAL),
+                features = listOf("Emergency food", "Pet food available", "Collection service", "Community support"),
+                contact = ContactInfo(phone = "01282 436396", email = "alan.barnes@bprvcs.co.uk"),
+                schedule = "Monday, Tuesday, Wednesday, Thursday, Friday (Daily) - 11:00-14:00",
+                status = ServiceStatus.PENDING
+            ),
+            Service(
+                id = UUID.randomUUID().toString(),
+                organizationName = "Burnley Community Kitchen",
+                groupName = "Burnley Community Kitchen",
+                location = "Unit 83, Upper Market Square of Charter Walk Shopping Centre",
+                description = "Food Bank service providing emergency food support to the community.",
+                types = listOf(ServiceType.FOOD_BANKS, ServiceType.PRACTICAL),
+                features = listOf("Emergency food", "Community support", "Food Bank"),
+                contact = ContactInfo(phone = "01282 686402", email = "contact@burnleytogether.org.uk"),
+                schedule = "Monday, Tuesday, Wednesday, Thursday, Friday (Daily) - 09:00-16:00",
+                status = ServiceStatus.PENDING
+            ),
+            Service(
+                id = UUID.randomUUID().toString(),
+                organizationName = "Spacious Places Delivery",
+                groupName = "Spacious Places Delivery",
+                location = "Briercliffe Shopping Centre, Briercliffe Road, Burnley BB10 1WB",
+                description = "Food Bank service that can do deliveries to the community.",
+                types = listOf(ServiceType.FOOD_BANKS, ServiceType.PRACTICAL),
+                features = listOf("Emergency food", "Delivery service", "Community support"),
+                contact = ContactInfo(phone = "01282 222030", email = "food@spaciousplace.co.uk"),
+                schedule = "Monday, Tuesday, Wednesday, Thursday, Friday (Daily)",
+                status = ServiceStatus.PENDING
+            ),
+            Service(
+                id = UUID.randomUUID().toString(),
+                organizationName = "Maundy Relief",
+                groupName = "Maundy Relief",
+                location = "29-31 Abbey Street, Accrington, BB5 1EN",
+                description = "Food Bank that supplies food parcels for residents of Accrington. Also provide a community lunch which is a hot meal served 12pm – 1pm Monday to Saturday.",
+                types = listOf(ServiceType.FOOD_BANKS, ServiceType.PRACTICAL, ServiceType.SOCIAL),
+                features = listOf("Emergency food", "Community lunch", "Hot meals", "Accrington residents", "Food parcels"),
+                contact = ContactInfo(phone = "01254 232328", email = ""),
+                schedule = "Monday-Friday (Daily) - 08:00-16:00, Community lunch 12pm-1pm Monday to Saturday",
+                status = ServiceStatus.PENDING
+            ),
+            Service(
+                id = UUID.randomUUID().toString(),
+                organizationName = "Burnley & Pendle Food Bank Group",
+                groupName = "Nelson Community Mosque Food Bank",
+                location = "Burnley, Pendle, Nelson",
+                description = "Food Bank service providing emergency food support to the community.",
+                types = listOf(ServiceType.FOOD_BANKS, ServiceType.PRACTICAL),
+                features = listOf("Emergency food", "Community support", "Food Bank"),
+                contact = ContactInfo(phone = "07873282580", email = ""),
+                schedule = "Monday, Tuesday, Wednesday, Thursday, Friday (Daily) - 09:00-17:00",
+                status = ServiceStatus.PENDING
             )
         )
     }

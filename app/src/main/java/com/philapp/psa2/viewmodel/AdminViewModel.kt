@@ -40,6 +40,13 @@ class AdminViewModel(
     private val _duplicateAnalysis = MutableStateFlow<DuplicateAnalysis?>(null)
     val duplicateAnalysis: StateFlow<DuplicateAnalysis?> = _duplicateAnalysis
 
+    // Add detailed duplicate management state
+    private val _detailedDuplicates = MutableStateFlow<List<DetailedDuplicateGroup>>(emptyList())
+    val detailedDuplicates: StateFlow<List<DetailedDuplicateGroup>> = _detailedDuplicates
+
+    private val _duplicateDeletionState = MutableStateFlow<Result<String>?>(null)
+    val duplicateDeletionState: StateFlow<Result<String>?> = _duplicateDeletionState
+
     data class DuplicateAnalysis(
         val totalServices: Int,
         val uniqueServices: Int,
@@ -51,6 +58,16 @@ class AdminViewModel(
         val key: String,
         val services: List<Service>,
         val count: Int
+    )
+
+    data class DetailedDuplicateGroup(
+        val key: String,
+        val organizationName: String,
+        val groupName: String,
+        val location: String,
+        val services: List<Service>,
+        val count: Int,
+        val duplicateIds: List<String>
     )
 
     init {
@@ -148,8 +165,117 @@ class AdminViewModel(
         }
     }
 
+    // Add function to get detailed duplicate information
+    fun getDetailedDuplicates(allServices: List<Service>) {
+        viewModelScope.launch {
+            try {
+                Log.d("AdminViewModel", "Getting detailed duplicates for ${allServices.size} services")
+                
+                // Group services by organization, group name, and location
+                val grouped = allServices.groupBy { service ->
+                    "${service.organizationName.lowercase().trim()}|${service.groupName.lowercase().trim()}|${service.location.lowercase().trim()}"
+                }
+                
+                // Find groups with more than one service
+                val detailedDuplicates = grouped.values
+                    .filter { it.size > 1 }
+                    .map { services ->
+                        val firstService = services.first()
+                        val key = "${firstService.organizationName} - ${firstService.groupName} - ${firstService.location}"
+                        DetailedDuplicateGroup(
+                            key = key,
+                            organizationName = firstService.organizationName,
+                            groupName = firstService.groupName,
+                            location = firstService.location,
+                            services = services,
+                            count = services.size,
+                            duplicateIds = services.map { it.id }
+                        )
+                    }
+                    .sortedByDescending { it.count }
+                
+                _detailedDuplicates.value = detailedDuplicates
+                Log.d("AdminViewModel", "Found ${detailedDuplicates.size} detailed duplicate groups")
+                
+            } catch (e: Exception) {
+                Log.e("AdminViewModel", "Error getting detailed duplicates", e)
+                _error.value = "Error getting detailed duplicates: ${e.message}"
+            }
+        }
+    }
+
+    // Add function to delete a specific duplicate service
+    fun deleteDuplicateService(serviceId: String) {
+        viewModelScope.launch {
+            try {
+                Log.d("AdminViewModel", "Deleting duplicate service with ID: $serviceId")
+                
+                val result = serviceRepository.deleteService(serviceId)
+                result.onSuccess {
+                    Log.d("AdminViewModel", "Successfully deleted duplicate service: $serviceId")
+                    _duplicateDeletionState.value = Result.success("Successfully deleted duplicate service")
+                    
+                    // Reload counts after deletion
+                    loadFirebaseServiceCount()
+                }.onFailure { e ->
+                    Log.e("AdminViewModel", "Failed to delete duplicate service", e)
+                    _duplicateDeletionState.value = Result.failure(e)
+                }
+                
+            } catch (e: Exception) {
+                Log.e("AdminViewModel", "Error deleting duplicate service", e)
+                _duplicateDeletionState.value = Result.failure(e)
+            }
+        }
+    }
+
+    // Add function to delete all duplicates in a group (keep first one)
+    fun deleteAllDuplicatesInGroup(groupKey: String) {
+        viewModelScope.launch {
+            try {
+                Log.d("AdminViewModel", "Deleting all duplicates in group: $groupKey")
+                
+                val group = _detailedDuplicates.value.find { it.key == groupKey }
+                if (group != null && group.services.size > 1) {
+                    // Keep the first service, delete the rest
+                    val servicesToDelete = group.services.drop(1)
+                    var deletedCount = 0
+                    
+                    servicesToDelete.forEach { service ->
+                        try {
+                            val result = serviceRepository.deleteService(service.id)
+                            result.onSuccess {
+                                deletedCount++
+                                Log.d("AdminViewModel", "Deleted duplicate service: ${service.id}")
+                            }.onFailure { e ->
+                                Log.e("AdminViewModel", "Failed to delete service: ${service.id}", e)
+                            }
+                        } catch (e: Exception) {
+                            Log.e("AdminViewModel", "Error deleting service: ${service.id}", e)
+                        }
+                    }
+                    
+                    _duplicateDeletionState.value = Result.success("Deleted $deletedCount duplicate services from group: $groupKey")
+                    
+                    // Reload counts after deletion
+                    loadFirebaseServiceCount()
+                } else {
+                    _duplicateDeletionState.value = Result.failure(IllegalStateException("Group not found or no duplicates"))
+                }
+                
+            } catch (e: Exception) {
+                Log.e("AdminViewModel", "Error deleting duplicates in group", e)
+                _duplicateDeletionState.value = Result.failure(e)
+            }
+        }
+    }
+
     fun clearDuplicateAnalysis() {
         _duplicateAnalysis.value = null
+    }
+
+    fun clearDuplicateDeletionState() {
+        _duplicateDeletionState.value = null
     }
 
     fun updateServiceStatus(serviceId: String, newStatus: ServiceStatus) {

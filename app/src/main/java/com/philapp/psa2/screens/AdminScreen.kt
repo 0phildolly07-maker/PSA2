@@ -38,9 +38,12 @@ fun AdminScreen(
     val firebaseCheckState by viewModel.firebaseCheckState.collectAsState()
     val firebaseServiceCount by viewModel.firebaseServiceCount.collectAsState()
     val duplicateAnalysis by viewModel.duplicateAnalysis.collectAsState()
+    val detailedDuplicates by viewModel.detailedDuplicates.collectAsState()
+    val duplicateDeletionState by viewModel.duplicateDeletionState.collectAsState()
     
     var showDuplicateSection by remember { mutableStateOf(false) }
     var showDuplicateAnalysis by remember { mutableStateOf(false) }
+    var showDetailedDuplicates by remember { mutableStateOf(false) }
     var showActionButtons by remember { mutableStateOf(false) }
     val allServices by searchViewModel.services.collectAsState()
     val duplicateServices by remember(allServices) {
@@ -62,11 +65,14 @@ fun AdminScreen(
     LaunchedEffect(allServices) {
         if (allServices.isNotEmpty()) {
             viewModel.analyzeDuplicates(allServices)
+            viewModel.getDetailedDuplicates(allServices)
         }
     }
 
     val snackbarHostState = remember { SnackbarHostState() }
     var showDuplicateConfirmDialog by remember { mutableStateOf(false) }
+    var showDeleteSingleDuplicateDialog by remember { mutableStateOf<Service?>(null) }
+    var showDeleteGroupDialog by remember { mutableStateOf<AdminViewModel.DetailedDuplicateGroup?>(null) }
     
     val scope = rememberCoroutineScope()
 
@@ -92,6 +98,17 @@ fun AdminScreen(
         }
     }
 
+    // Show duplicate deletion feedback
+    LaunchedEffect(duplicateDeletionState) {
+        duplicateDeletionState?.onSuccess { message ->
+            snackbarHostState.showSnackbar(message)
+            viewModel.clearDuplicateDeletionState()
+        }?.onFailure { e ->
+            snackbarHostState.showSnackbar("Failed to delete duplicate: ${e.message}")
+            viewModel.clearDuplicateDeletionState()
+        }
+    }
+
     if (showDuplicateConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showDuplicateConfirmDialog = false },
@@ -112,6 +129,65 @@ fun AdminScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showDuplicateConfirmDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (showDeleteSingleDuplicateDialog != null) {
+        val service = showDeleteSingleDuplicateDialog!!
+        AlertDialog(
+            onDismissRequest = { showDeleteSingleDuplicateDialog = null },
+            title = { Text("Delete Duplicate Service") },
+            text = { 
+                Text("Are you sure you want to delete this duplicate service?\n\n" +
+                     "Organization: ${service.organizationName}\n" +
+                     "Group: ${service.groupName}\n" +
+                     "Location: ${service.location}")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.deleteDuplicateService(service.id)
+                        showDeleteSingleDuplicateDialog = null
+                    }
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteSingleDuplicateDialog = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (showDeleteGroupDialog != null) {
+        val group = showDeleteGroupDialog!!
+        AlertDialog(
+            onDismissRequest = { showDeleteGroupDialog = null },
+            title = { Text("Delete All Duplicates in Group") },
+            text = { 
+                Text("Are you sure you want to delete all duplicates in this group, keeping only the first service?\n\n" +
+                     "Organization: ${group.organizationName}\n" +
+                     "Group: ${group.groupName}\n" +
+                     "Location: ${group.location}\n" +
+                     "This will delete ${group.count - 1} duplicate services.")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.deleteAllDuplicatesInGroup(group.key)
+                        showDeleteGroupDialog = null
+                    }
+                ) {
+                    Text("Delete All Duplicates")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteGroupDialog = null }) {
                     Text("Cancel")
                 }
             }

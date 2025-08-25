@@ -154,8 +154,18 @@ class ServiceRepository {
         }
     }
 
-    suspend fun deleteService(serviceId: String) {
-        db.collection("services").document(serviceId).delete().await()
+    suspend fun deleteService(serviceId: String): Result<Unit> {
+        return try {
+            Log.d("ServiceRepository", "Deleting service with ID: $serviceId")
+            
+            servicesCollection.document(serviceId).delete().await()
+            
+            Log.d("ServiceRepository", "Successfully deleted service: $serviceId")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e("ServiceRepository", "Error deleting service: $serviceId", e)
+            Result.failure(e)
+        }
     }
 
     suspend fun getServiceById(serviceId: String): Result<Service> {
