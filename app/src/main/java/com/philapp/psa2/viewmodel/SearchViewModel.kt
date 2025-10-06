@@ -1679,4 +1679,128 @@ class SearchViewModel(
         repository.deleteService(serviceId)
         // ServiceManager will automatically update via Firestore listener
     }
+
+    // Add all Pendle YES Hub services
+    fun addPendleYesHubServices() {
+        viewModelScope.launch {
+            try {
+                _isLoading.value = true
+                _error.value = null
+                
+                Log.d("SearchViewModel", "Adding Pendle YES Hub services")
+                
+                // 1. Don't Fret: Guitar Lessons (Advanced)
+                addNewService(
+                    organizationName = "Pendle YES Hub",
+                    groupName = "Don't Fret: Guitar Lessons (Advanced)",
+                    location = "Pendle YES Hub, Nelson",
+                    description = "Advanced guitar lessons with Aaron",
+                    types = listOf(ServiceType.SOCIAL),
+                    features = listOf("Guitar lessons", "Advanced level", "Music"),
+                    contactPhone = "07859739635",
+                    contactEmail = "DMarshall@activelancashire.org.uk",
+                    schedule = "Monday 13:00-14:00 (Weekly)"
+                )
+
+                // 2. National Careers Service Employment Support
+                addNewService(
+                    organizationName = "Pendle YES Hub",
+                    groupName = "National Careers Service Employment Support",
+                    location = "Pendle YES Hub, Nelson",
+                    description = "Employment support with the National Careers Service",
+                    types = listOf(ServiceType.EMPLOYMENT),
+                    features = listOf("Employment support", "Career guidance", "Job search"),
+                    contactPhone = "07859739635",
+                    contactEmail = "DMarshall@activelancashire.org.uk",
+                    schedule = "Tuesday 09:00-16:00 (Weekly)"
+                )
+
+                // 3. Pickleball, Badminton and Football
+                addNewService(
+                    organizationName = "Pendle YES Hub",
+                    groupName = "Pickleball, Badminton and Football",
+                    location = "Leisure Box, BB9 5NH, Nelson",
+                    description = "Group sports sessions including pickleball, badminton and football",
+                    types = listOf(ServiceType.SPORT_AND_FITNESS),
+                    features = listOf("Pickleball", "Badminton", "Football", "Group sports"),
+                    contactPhone = "07859739635",
+                    contactEmail = "DMarshall@activelancashire.org.uk",
+                    schedule = "Tuesday 16:00-17:00 (Weekly)"
+                )
+
+                // 4. Walking Wednesdays
+                addNewService(
+                    organizationName = "Pendle YES Hub",
+                    groupName = "Walking Wednesdays",
+                    location = "Pendle YES Hub, Nelson",
+                    description = "Local walks for health and socialising",
+                    types = listOf(ServiceType.SPORT_AND_FITNESS),
+                    features = listOf("Walking", "Health", "Socialising", "Outdoor activity"),
+                    contactPhone = "07859739635",
+                    contactEmail = "DMarshall@activelancashire.org.uk",
+                    schedule = "Wednesday 13:00-14:00 (Weekly)"
+                )
+
+                // 5. 1-1 Mental Health Wellbeing Support (Kieran and Sarah)
+                addNewService(
+                    organizationName = "Pendle YES Hub",
+                    groupName = "1-1 Mental Health Wellbeing Support (Kieran and Sarah)",
+                    location = "Pendle YES Hub, Nelson",
+                    description = "One-to-one mental health wellbeing support",
+                    types = listOf(ServiceType.MENTAL_HEALTH),
+                    features = listOf("One-to-one support", "Mental health", "Wellbeing", "Individual sessions"),
+                    contactPhone = "07859739635",
+                    contactEmail = "DMarshall@activelancashire.org.uk",
+                    schedule = "Wednesday 12:00-15:00 (Weekly)"
+                )
+
+                // 6. Snooker and Pool
+                addNewService(
+                    organizationName = "Pendle YES Hub",
+                    groupName = "Snooker and Pool",
+                    location = "Alexandra Snooker Club, 5 Holme Street, Nelson",
+                    description = "Snooker and pool session",
+                    types = listOf(ServiceType.SOCIAL),
+                    features = listOf("Snooker", "Pool", "Social activity", "Indoor games"),
+                    contactPhone = "07859739635",
+                    contactEmail = "DMarshall@activelancashire.org.uk",
+                    schedule = "Friday 12:00-13:00 (Weekly)"
+                )
+
+                // 7. Burnley College Employment & Courses Support
+                addNewService(
+                    organizationName = "Pendle YES Hub",
+                    groupName = "Burnley College Employment & Courses Support",
+                    location = "Pendle YES Hub, Nelson",
+                    description = "Employment and course support from Burnley College",
+                    types = listOf(ServiceType.EMPLOYMENT, ServiceType.EDUCATION),
+                    features = listOf("Employment support", "Course support", "Education", "Training"),
+                    contactPhone = "07859739635",
+                    contactEmail = "DMarshall@activelancashire.org.uk",
+                    schedule = "Thursday 13:30-16:00 (Weekly)"
+                )
+
+                // 8. Gym Session
+                addNewService(
+                    organizationName = "Pendle YES Hub",
+                    groupName = "Gym Session",
+                    location = "Pendle Wavelengths, BB9 9TD, Nelson",
+                    description = "Group gym session",
+                    types = listOf(ServiceType.SPORT_AND_FITNESS),
+                    features = listOf("Gym", "Fitness", "Group workout", "Exercise"),
+                    contactPhone = "07859739635",
+                    contactEmail = "DMarshall@activelancashire.org.uk",
+                    schedule = "Thursday 14:00-15:00 (Weekly)"
+                )
+
+                Log.d("SearchViewModel", "Successfully added all Pendle YES Hub services")
+                
+            } catch (e: Exception) {
+                Log.e("SearchViewModel", "Error adding Pendle YES Hub services", e)
+                _error.value = e
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
 } 
