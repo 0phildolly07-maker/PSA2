@@ -13,6 +13,8 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -93,11 +95,11 @@ fun HomeScreen(
 
     Scaffold(
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = { navController.navigate("add_service") }
-            ) {
-                Text("+")
-            }
+            ExtendedFloatingActionButton(
+                onClick = { navController.navigate("add_service") },
+                icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                text = { Text("Add New Service") }
+            )
         },
         topBar = {
             CenterAlignedTopAppBar(

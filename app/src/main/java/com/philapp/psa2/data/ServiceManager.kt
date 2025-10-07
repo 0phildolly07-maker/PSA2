@@ -12,6 +12,7 @@ import com.philapp.psa2.model.Service
 import com.philapp.psa2.model.ServiceType
 import com.philapp.psa2.model.ServiceStatus
 import com.philapp.psa2.model.ContactInfo
+import android.util.Log
 
 object ServiceManager {
 
@@ -1068,36 +1069,54 @@ object ServiceManager {
         listenerRegistration?.remove()
         listenerRegistration = Firebase.firestore.collection("services")
             .addSnapshotListener { snapshot, error ->
-                if (error != null || snapshot == null) return@addSnapshotListener
+                if (error != null || snapshot == null) {
+                    Log.e("ServiceManager", "Firestore listener error: ${error?.message}")
+                    return@addSnapshotListener
+                }
 
+                Log.d("ServiceManager", "Received ${snapshot.documents.size} documents from Firestore")
+                
                 val firestoreServices = snapshot.documents.mapNotNull { doc ->
                     try {
                         val serviceData = doc.data
                         if (serviceData != null) {
-                            // Create a case-insensitive map for field lookup
-                            val caseInsensitiveData = serviceData.mapKeys { it.key.toString().lowercase() }
+                            Log.d("ServiceManager", "Processing document ${doc.id}")
+                            Log.d("ServiceManager", "  Raw fields: ${serviceData.keys}")
                             
-                            Service(
+                            // Create a case-insensitive map for field lookup, removing spaces and slashes
+                            val caseInsensitiveData = serviceData.mapKeys { 
+                                it.key.toString().lowercase().replace(Regex("[\\s/]"), "")
+                            }
+                            
+                            Log.d("ServiceManager", "  Normalized fields: ${caseInsensitiveData.keys}")
+                            
+                            val service = Service(
                                 id = doc.id,
-                                organizationName = getFieldValue(caseInsensitiveData, "organizationname", "organization_name", "organization") ?: "",
-                                groupName = getFieldValue(caseInsensitiveData, "groupname", "group_name", "group") ?: "",
-                                location = getFieldValue(caseInsensitiveData, "location", "address", "place") ?: "",
-                                description = getFieldValue(caseInsensitiveData, "description", "desc", "details") ?: "",
-                                types = parseServiceTypes(caseInsensitiveData),
-                                features = parseFeatures(caseInsensitiveData),
-                                contact = parseContactInfo(caseInsensitiveData),
-                                schedule = getFieldValue(caseInsensitiveData, "schedule", "sessions", "times", "hours"),
+                                organizationName = getFieldValue(caseInsensitiveData, "organisationname", "organizationname", "organization_name", "organization") ?: "",
+                                groupName = getFieldValue(caseInsensitiveData, "groupprogramname", "groupname", "group_name", "group") ?: "",
+                                location = getFieldValue(caseInsensitiveData, "locationdetails", "location", "address", "place") ?: "",
+                                description = getFieldValue(caseInsensitiveData, "groupdescription", "description", "desc", "details") ?: "",
+                                types = parseServiceTypes(caseInsensitiveData, serviceData),
+                                features = parseFeatures(caseInsensitiveData, serviceData),
+                                contact = parseContactInfo(caseInsensitiveData, serviceData),
+                                schedule = getFieldValue(caseInsensitiveData, "sessiontimes", "schedule", "sessions", "times", "hours") ?: "",
                                 status = parseServiceStatus(caseInsensitiveData),
                                 isDuplicate = caseInsensitiveData["isduplicate"] as? Boolean ?: false,
                                 websiteUrl = getFieldValue(caseInsensitiveData, "websiteurl", "website", "url", "link")
                             )
+                            
+                            Log.d("ServiceManager", "  Parsed: ${service.organizationName} - ${service.groupName}, status=${service.status}, types=${service.types}")
+                            service
                         } else null
                     } catch (e: Exception) {
+                        Log.e("ServiceManager", "Error parsing service document ${doc.id}", e)
                         null
                     }
                 }
                 
+                Log.d("ServiceManager", "Successfully parsed ${firestoreServices.size} services from Firestore")
                 val updatedList = overrideWithFirestore(firestoreServices, hardcodedServices)
+                Log.d("ServiceManager", "Total services after merge with hardcoded: ${updatedList.size}")
                 saveToCache(prefs, updatedList)
                 onResult(updatedList)
             }
@@ -1171,34 +1190,66 @@ object ServiceManager {
     }
 
     // Helper function to parse service types with case-insensitive handling
-    private fun parseServiceTypes(data: Map<String, Any?>): List<ServiceType> {
-        val typesList = data["types"] as? List<String> ?: emptyList()
-        return typesList.mapNotNull { typeName ->
-            try {
-                // Try exact match first
-                ServiceType.valueOf(typeName.uppercase())
-            } catch (e: IllegalArgumentException) {
+    private fun parseServiceTypes(data: Map<String, Any?>, originalData: Map<String, Any?>): List<ServiceType> {
+        // First try to get as a list (new format)
+        val typesList = data["types"] as? List<String>
+        if (typesList != null && typesList.isNotEmpty()) {
+            return typesList.mapNotNull { typeName ->
                 try {
-                    // Try case-insensitive match
-                    ServiceType.values().find { it.name.equals(typeName, ignoreCase = true) }
-                } catch (e: Exception) {
-                    null
+                    ServiceType.valueOf(typeName.uppercase())
+                } catch (e: IllegalArgumentException) {
+                    try {
+                        ServiceType.values().find { it.name.equals(typeName, ignoreCase = true) }
+                    } catch (e: Exception) {
+                        null
+                    }
                 }
             }
         }
+        
+        // Try to get as comma-separated string (ServiceRepository format)
+        val typesString = data["servicetype"] as? String
+        if (!typesString.isNullOrBlank()) {
+            return typesString.split(",").mapNotNull { typeName ->
+                try {
+                    ServiceType.valueOf(typeName.trim().uppercase().replace(" ", "_"))
+                } catch (e: IllegalArgumentException) {
+                    try {
+                        ServiceType.values().find { it.name.equals(typeName.trim(), ignoreCase = true) }
+                    } catch (e: Exception) {
+                        null
+                    }
+                }
+            }
+        }
+        
+        return emptyList()
     }
 
     // Helper function to parse features
-    private fun parseFeatures(data: Map<String, Any?>): List<String> {
-        return data["features"] as? List<String> ?: emptyList()
+    private fun parseFeatures(data: Map<String, Any?>, originalData: Map<String, Any?>): List<String> {
+        // First try to get as a list (new format)
+        val featuresList = data["features"] as? List<String>
+        if (featuresList != null && featuresList.isNotEmpty()) {
+            return featuresList
+        }
+        
+        // Try to get as comma-separated string (ServiceRepository format)
+        val featuresString = data["features"] as? String
+        if (!featuresString.isNullOrBlank()) {
+            return featuresString.split(",").map { it.trim() }
+        }
+        
+        return emptyList()
     }
 
     // Helper function to parse contact info with case-insensitive field names
-    private fun parseContactInfo(data: Map<String, Any?>): ContactInfo? {
+    private fun parseContactInfo(data: Map<String, Any?>, originalData: Map<String, Any?>): ContactInfo? {
+        // First try to get as a nested map (new format)
         val contactData = data["contact"] as? Map<*, *>
         if (contactData != null) {
-            val phone = getFieldValue(contactData.mapKeys { it.key.toString().lowercase() }, "phone", "telephone", "tel")
-            val email = getFieldValue(contactData.mapKeys { it.key.toString().lowercase() }, "email", "mail")
+            val phone = getFieldValue(contactData.mapKeys { it.key.toString().lowercase().replace(Regex("[\\s/]"), "") }, "phone", "telephone", "tel")
+            val email = getFieldValue(contactData.mapKeys { it.key.toString().lowercase().replace(Regex("[\\s/]"), "") }, "email", "mail")
             if (!phone.isNullOrBlank() || !email.isNullOrBlank()) {
                 return ContactInfo(
                     phone = phone ?: "",
@@ -1206,6 +1257,16 @@ object ServiceManager {
                 )
             }
         }
+        
+        // Try to get as a simple string (ServiceRepository format - "Contact Information")
+        val contactString = data["contactinformation"] as? String
+        if (!contactString.isNullOrBlank()) {
+            return ContactInfo(
+                phone = contactString,
+                email = ""
+            )
+        }
+        
         return null
     }
 
