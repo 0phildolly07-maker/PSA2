@@ -26,6 +26,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.items
+import com.philapp.psa2.ui.components.OfflineIndicatorBanner
+import com.philapp.psa2.ui.components.rememberNetworkConnectivity
 
 @Composable
 fun ResultsScreen(
@@ -39,6 +41,7 @@ fun ResultsScreen(
     val services by searchViewModel.services.collectAsState()
     val isLoading by searchViewModel.isLoading.collectAsState()
     val error by searchViewModel.error.collectAsState()
+    val connectionStatus = rememberNetworkConnectivity().value
 
     LaunchedEffect(type, customSearch, location) {
         // Handle "all" location parameter - pass null to search all locations
@@ -81,17 +84,23 @@ fun ResultsScreen(
             )
         }
     ) { padding ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp)
+            // Offline indicator banner
+            OfflineIndicatorBanner(connectionStatus = connectionStatus)
+            
+            Box(
+                modifier = Modifier.fillMaxSize()
             ) {
-                // Location search field - only show if not searching all locations
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp)
+                ) {
+                    // Location search field - only show if not searching all locations
                 if (location != "all") {
                     OutlinedTextField(
                         value = locationText,
@@ -200,13 +209,14 @@ fun ResultsScreen(
                 }
             }
 
-            // Loading indicator
-            if (isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .align(Alignment.Center)
-                )
+                // Loading indicator
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .align(Alignment.Center)
+                    )
+                }
             }
         }
     }

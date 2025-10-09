@@ -19,6 +19,17 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+
+        // Read API key from local.properties
+        val properties = org.jetbrains.kotlin.konan.properties.Properties()
+        val localPropertiesFile = rootProject.file("local.properties")
+        if (localPropertiesFile.exists()) {
+            properties.load(localPropertiesFile.inputStream())
+        }
+        
+        // Set manifest placeholder for Google Maps API key
+        val mapsApiKey = properties.getProperty("MAPS_API_KEY") ?: "YOUR_API_KEY"
+        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
     }
 
     buildTypes {

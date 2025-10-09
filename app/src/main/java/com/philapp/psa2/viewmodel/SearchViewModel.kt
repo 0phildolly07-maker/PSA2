@@ -136,10 +136,13 @@ class SearchViewModel(
                         val matchesLocation = location.isNullOrEmpty() ||
                             service.location.contains(location, ignoreCase = true)
                         
-                        matchesQuery && matchesType && matchesLocation
+                        // Only show approved services in public search results
+                        val isApproved = service.status == ServiceStatus.APPROVED
+                        
+                        matchesQuery && matchesType && matchesLocation && isApproved
                     }
                     
-                    Log.d("SearchViewModel", "Found ${filteredServices.size} matching services")
+                    Log.d("SearchViewModel", "Found ${filteredServices.size} approved services matching criteria (from ${allServices.size} total)")
                     _services.value = filteredServices
                     _isLoading.value = false
                 }

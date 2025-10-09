@@ -5,8 +5,11 @@ import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -104,10 +107,42 @@ fun ServiceDetailsScreen(
                     style = MaterialTheme.typography.titleMedium
                 )
                 if (contact.phone.isNotBlank()) {
-                    Text(
-                        text = "Phone: ${contact.phone}",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                    // Parse phone numbers - handles both single and multiple numbers
+                    val phoneEntries = contact.phone.split(",").map { it.trim() }
+                    
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        phoneEntries.forEach { entry ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Phone: $entry",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Button(
+                                    onClick = {
+                                        // Extract only digits and + sign from the phone number
+                                        val cleanedPhone = entry.replace(Regex("[^0-9+]"), "")
+                                        val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$cleanedPhone"))
+                                        context.startActivity(intent)
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Phone,
+                                        contentDescription = "Call"
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Call")
+                                }
+                            }
+                        }
+                    }
                 }
                 if (contact.email.isNotBlank()) {
                     Text(

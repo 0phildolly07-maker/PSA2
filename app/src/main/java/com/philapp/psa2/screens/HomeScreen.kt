@@ -31,6 +31,9 @@ import com.philapp.psa2.model.SearchState
 import com.philapp.psa2.model.Service
 import androidx.core.content.ContextCompat
 import com.philapp.psa2.model.AreaList
+import com.philapp.psa2.ui.components.OfflineIndicatorBanner
+import com.philapp.psa2.ui.components.rememberNetworkConnectivity
+import com.philapp.psa2.utils.isConnected
 
 enum class SupportType(val title: String, val description: String) {
     PEER_SUPPORT("Peer Support/Groups", "Connect with others who share similar experiences"),
@@ -73,6 +76,7 @@ fun HomeScreen(
     val scrollState = rememberScrollState()
     val searchState = searchViewModel.searchState.value
     val context = LocalContext.current
+    val connectionStatus = rememberNetworkConnectivity().value
 
     // Handle location permission
     var hasLocationPermission by remember {
@@ -93,12 +97,22 @@ fun HomeScreen(
         }
     }
 
+    val isConnected = connectionStatus.isConnected()
+    
     Scaffold(
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                onClick = { navController.navigate("add_service") },
+                onClick = { 
+                    if (isConnected) {
+                        navController.navigate("add_service") 
+                    }
+                },
                 icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                text = { Text("Add New Service") }
+                text = { Text(if (isConnected) "Add New Service" else "Offline") },
+                containerColor = if (isConnected) 
+                    MaterialTheme.colorScheme.primaryContainer 
+                else 
+                    MaterialTheme.colorScheme.surfaceVariant
             )
         },
         topBar = {
@@ -115,12 +129,20 @@ fun HomeScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .padding(16.dp),
+                .padding(padding),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Header
-            Text(
+            // Offline indicator banner
+            OfflineIndicatorBanner(connectionStatus = connectionStatus)
+            
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Header
+                Text(
                 text = if (showLocationInput) "Where are you looking?" else "What support are you looking for?",
                 style = MaterialTheme.typography.headlineMedium,
                 textAlign = TextAlign.Center,
@@ -208,6 +230,7 @@ fun HomeScreen(
                         Text("Search")
                     }
                 }
+            }
             }
         }
     }
