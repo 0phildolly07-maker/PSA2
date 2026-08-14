@@ -9,14 +9,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.philapp.psa2.model.Service
-import com.philapp.psa2.model.ServiceType
-import com.philapp.psa2.model.ContactInfo
 import com.philapp.psa2.viewmodel.SearchViewModel
 
 // Map of organization names to website URLs
@@ -33,11 +31,25 @@ fun ServiceDetailsScreen(
     serviceId: String,
     searchViewModel: SearchViewModel
 ) {
-    val service = searchViewModel.services.value.find { it.id == serviceId }
+    val services by searchViewModel.services.collectAsState()
+    val isLoading by searchViewModel.isLoading.collectAsState()
+    val service = services.find { it.id == serviceId }
     val context = LocalContext.current
 
     // Use the service's websiteUrl, or fallback to the organization map
     val websiteUrl = service?.websiteUrl?.takeIf { it.isNotBlank() } ?: organizationWebsites[service?.organizationName]
+
+    if (isLoading && service == null) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
+        }
+        return
+    }
 
     Column(
         modifier = Modifier
@@ -152,11 +164,11 @@ fun ServiceDetailsScreen(
                 }
             }
             // Website button or fallback message
-            if (!service.websiteUrl.isNullOrBlank()) {
+            if (!websiteUrl.isNullOrBlank()) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Button(
                     onClick = {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(service.websiteUrl))
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(websiteUrl))
                         context.startActivity(intent)
                     },
                     modifier = Modifier.padding(top = 8.dp)

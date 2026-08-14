@@ -19,6 +19,7 @@ import com.philapp.psa2.screens.ResultsScreen
 import com.philapp.psa2.screens.ServiceDetailsScreen
 import com.philapp.psa2.screens.AddServiceScreen
 import com.philapp.psa2.screens.AdminScreen
+import com.philapp.psa2.screens.AdminCachedServicesScreen
 import com.philapp.psa2.screens.EditServiceScreen
 import com.philapp.psa2.screens.TitleScreen
 import com.philapp.psa2.viewmodel.SearchViewModel
@@ -135,6 +136,10 @@ class MainActivity : ComponentActivity() {
                                 searchViewModel = searchViewModel,
                                 viewModel = adminViewModel
                             )
+                        }
+
+                        composable("admin_cached_services") {
+                            AdminCachedServicesScreen(navController = navController)
                         }
 
                         composable("edit_service/{serviceId}") { backStackEntry ->

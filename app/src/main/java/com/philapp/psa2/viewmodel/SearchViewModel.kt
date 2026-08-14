@@ -84,6 +84,20 @@ class SearchViewModel(
             _error.value = null
             
             try {
+                // One-time migration: existing "Pending" services become "Approved" on first app start.
+                // New services added after this will remain "Pending" until admin approves.
+                val migrationResult = serviceRepository.approveExistingPendingServicesOnFirstRun(getApplication())
+                migrationResult.onSuccess { count ->
+                    if (count > 0) {
+                        Log.d("SearchViewModel", "Auto-approved $count existing pending services on first run")
+                    } else {
+                        Log.d("SearchViewModel", "Pending auto-approval migration already done or nothing to approve")
+                    }
+                }.onFailure { e ->
+                    // Best-effort: don't block app from loading if migration fails.
+                    Log.e("SearchViewModel", "Auto-approval migration failed: ${e.message}", e)
+                }
+
                 Log.d("SearchViewModel", "Loading all services using ServiceManager")
                 ServiceManager.loadServicesLive(getApplication()) { services ->
                     Log.d("SearchViewModel", "Received ${services.size} services from ServiceManager")
@@ -134,7 +148,8 @@ class SearchViewModel(
                         val matchesType = type == null || service.types.contains(type)
                         
                         val matchesLocation = location.isNullOrEmpty() ||
-                            service.location.contains(location, ignoreCase = true)
+                            service.location.contains(location, ignoreCase = true) ||
+                            service.town.contains(location, ignoreCase = true)
                         
                         // Only show approved services in public search results
                         val isApproved = service.status == ServiceStatus.APPROVED
@@ -404,48 +419,68 @@ class SearchViewModel(
 
     fun updateService(
         serviceId: String,
-        organizationName: String? = null,
-        groupName: String? = null,
-        location: String? = null,
-        description: String? = null,
-        types: List<ServiceType>? = null,
-        features: List<String>? = null,
-        contactPhone: String? = null,
-        contactEmail: String? = null,
-        schedule: String? = null,
-        websiteUrl: String? = null
+        organizationName: String,
+        groupName: String,
+        location: String,
+        town: String,
+        description: String,
+        types: List<ServiceType>,
+        features: List<String>,
+        contactPhone: String,
+        contactEmail: String,
+        schedule: String,
+        websiteUrl: String,
+        onComplete: ((Throwable?) -> Unit)? = null
     ) {
         viewModelScope.launch {
             try {
-                val existingService = _services.value.find { it.id == serviceId } ?: return@launch
+                var existingService = _services.value.find { it.id == serviceId }
+                if (existingService == null) {
+                    Log.w(
+                        "SearchViewModel",
+                        "updateService: id not in in-memory list (e.g. after search filter); loading from Firestore"
+                    )
+                    existingService = repository.getServiceById(serviceId).getOrNull()
+                }
+                if (existingService == null) {
+                    val err = IllegalStateException("Service not found: $serviceId")
+                    Log.e("SearchViewModel", "updateService: $err")
+                    _error.value = err
+                    _searchState.value = SearchState.Error("Could not save: service not found.")
+                    onComplete?.invoke(err)
+                    return@launch
+                }
                 val updatedService = existingService.copy(
-                    organizationName = organizationName ?: existingService.organizationName,
-                    groupName = groupName ?: existingService.groupName,
-                    location = location ?: existingService.location,
-                    description = description ?: existingService.description,
-                    types = types ?: existingService.types,
-                    features = features ?: existingService.features,
-                    contact = if (contactPhone != null || contactEmail != null) {
-                        ContactInfo(
-                            phone = contactPhone ?: existingService.contact?.phone ?: "",
-                            email = contactEmail ?: existingService.contact?.email ?: ""
-                        )
-                    } else existingService.contact,
-                    schedule = schedule ?: existingService.schedule,
-                    websiteUrl = websiteUrl ?: existingService.websiteUrl
+                    organizationName = organizationName,
+                    groupName = groupName,
+                    location = location,
+                    town = town,
+                    description = description,
+                    types = types,
+                    features = features,
+                    contact = ContactInfo(
+                        phone = contactPhone,
+                        email = contactEmail
+                    ),
+                    schedule = schedule.takeIf { it.isNotBlank() },
+                    websiteUrl = websiteUrl.takeIf { it.isNotBlank() }
                 )
                 repository.updateService(updatedService)
-                
-                // Update the local list immediately
+
                 _services.value = _services.value.map { if (it.id == serviceId) updatedService else it }
-                
-                // Reload services from Firebase to ensure consistency
+
                 loadServices()
-                
-                Log.d("SearchViewModel", "Successfully updated service: ${updatedService.organizationName} - ${updatedService.groupName}")
+
+                Log.d(
+                    "SearchViewModel",
+                    "Successfully updated service: ${updatedService.organizationName} - ${updatedService.groupName}"
+                )
+                onComplete?.invoke(null)
             } catch (e: Exception) {
                 Log.e("SearchViewModel", "Failed to update service", e)
                 _searchState.value = SearchState.Error("Failed to update service: ${e.message}")
+                _error.value = e
+                onComplete?.invoke(e)
             }
         }
     }

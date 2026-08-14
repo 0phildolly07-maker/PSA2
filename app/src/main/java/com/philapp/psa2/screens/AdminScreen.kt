@@ -392,7 +392,22 @@ fun AdminScreen(
                                     
                                     Spacer(modifier = Modifier.height(8.dp))
                                     
-                                    // Third row - Replace Firebase button (full width due to destructive nature)
+                                    // Third row - view local JSON cache (read-only)
+                                    OutlinedButton(
+                                        onClick = {
+                                            navController.navigate("admin_cached_services")
+                                            showActionButtons = false
+                                        },
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Icon(Icons.Default.Storage, contentDescription = null)
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("View cached services")
+                                    }
+
+                                    Spacer(modifier = Modifier.height(8.dp))
+
+                                    // Fourth row - Replace Firebase button (full width due to destructive nature)
                                     Button(
                                         onClick = { 
                                             searchViewModel.replaceFirebaseWithHardcodedServices()

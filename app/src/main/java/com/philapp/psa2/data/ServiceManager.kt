@@ -13,6 +13,7 @@ import com.philapp.psa2.model.ServiceType
 import com.philapp.psa2.model.ServiceStatus
 import com.philapp.psa2.model.ContactInfo
 import android.util.Log
+import com.philapp.psa2.utils.generateServiceId
 
 object ServiceManager {
 
@@ -1023,6 +1024,554 @@ object ServiceManager {
             schedule = "Monday, Tuesday, Wednesday, Thursday, Friday (Daily) - 09:00-17:00",
             status = ServiceStatus.APPROVED
         ),
+
+        // The Nattershack Scheme services - 10 services
+        Service(
+            id = "the_nattershack_booths_barrowford",
+            organizationName = "The Nattershack",
+            groupName = "The NatterShack Scheme - Booth's Barrowford",
+            location = "Booth's Coffee Shop, Barrowford",
+            town = "Barrowford",
+            description = "Join us for a brew and a natter. Everyone welcome. No need to book.",
+            types = listOf(ServiceType.PEER_SUPPORT, ServiceType.SOCIAL, ServiceType.MENTAL_HEALTH, ServiceType.COMMUNITY_INTEREST_GROUPS),
+            features = listOf("Peer support", "Social activities", "Mental health support", "No booking required"),
+            contact = ContactInfo(phone = "The Nattershack", email = "Nattershack@yahoo.com"),
+            schedule = "Monday 10:30 (Weekly)",
+            status = ServiceStatus.APPROVED,
+            websiteUrl = "https://www.facebook.com/p/The-Natter-Shack-Scheme-100064392774105/"
+        ),
+        Service(
+            id = "the_nattershack_brierfield_library",
+            organizationName = "The Nattershack",
+            groupName = "The NatterShack Scheme - Brierfield Library",
+            location = "Brierfield Library, Colne Road, Brierfield, Nelson",
+            town = "Nelson",
+            description = "Join us for a brew and a natter. Everyone welcome. No need to book.",
+            types = listOf(ServiceType.PEER_SUPPORT, ServiceType.SOCIAL, ServiceType.MENTAL_HEALTH, ServiceType.COMMUNITY_INTEREST_GROUPS),
+            features = listOf("Peer support", "Social activities", "Mental health support", "No booking required"),
+            contact = ContactInfo(phone = "The Nattershack", email = "Nattershack@yahoo.com"),
+            schedule = "Monday 14:00-15:00 (Weekly)",
+            status = ServiceStatus.APPROVED,
+            websiteUrl = "https://www.facebook.com/p/The-Natter-Shack-Scheme-100064392774105/"
+        ),
+        Service(
+            id = "the_nattershack_prairie_sports_village",
+            organizationName = "The Nattershack",
+            groupName = "The NatterShack Scheme - Prairie Sports Village",
+            location = "Prairie Sports Village, Windermere Avenue, Burnley",
+            town = "Burnley",
+            description = "Join us for a brew and a natter. Everyone welcome. No need to book.",
+            types = listOf(ServiceType.PEER_SUPPORT, ServiceType.SOCIAL, ServiceType.MENTAL_HEALTH, ServiceType.COMMUNITY_INTEREST_GROUPS),
+            features = listOf("Peer support", "Social activities", "Mental health support", "No booking required"),
+            contact = ContactInfo(phone = "The Nattershack", email = "Nattershack@yahoo.com"),
+            schedule = "Tuesday 11:00 (Weekly)",
+            status = ServiceStatus.APPROVED,
+            websiteUrl = "https://www.facebook.com/p/The-Natter-Shack-Scheme-100064392774105/"
+        ),
+        Service(
+            id = "the_nattershack_dempseys_burnley",
+            organizationName = "The Nattershack",
+            groupName = "The NatterShack Scheme - Dempsey's Burnley",
+            location = "Dempsey's, Briercliffe Road, Burnley",
+            town = "Burnley",
+            description = "Join us for a brew and a natter. Everyone welcome. No need to book.",
+            types = listOf(ServiceType.PEER_SUPPORT, ServiceType.SOCIAL, ServiceType.MENTAL_HEALTH, ServiceType.COMMUNITY_INTEREST_GROUPS),
+            features = listOf("Peer support", "Social activities", "Mental health support", "No booking required"),
+            contact = ContactInfo(phone = "The Nattershack", email = "Nattershack@yahoo.com"),
+            schedule = "Tuesday 11:00-13:00 (Weekly)",
+            status = ServiceStatus.APPROVED,
+            websiteUrl = "https://www.facebook.com/p/The-Natter-Shack-Scheme-100064392774105/"
+        ),
+        Service(
+            id = "the_nattershack_swan_and_goose",
+            organizationName = "The Nattershack",
+            groupName = "The NatterShack Scheme - Swan and Goose",
+            location = "The Swan and Goose, Barden Marina, Burnley",
+            town = "Burnley",
+            description = "Join us for a brew and a natter. Everyone welcome. No need to book.",
+            types = listOf(ServiceType.PEER_SUPPORT, ServiceType.SOCIAL, ServiceType.MENTAL_HEALTH, ServiceType.COMMUNITY_INTEREST_GROUPS),
+            features = listOf("Peer support", "Social activities", "Mental health support", "No booking required"),
+            contact = ContactInfo(phone = "The Nattershack", email = "Nattershack@yahoo.com"),
+            schedule = "Tuesday 14:00 (Weekly)",
+            status = ServiceStatus.APPROVED,
+            websiteUrl = "https://www.facebook.com/p/The-Natter-Shack-Scheme-100064392774105/"
+        ),
+        Service(
+            id = "the_nattershack_mechanics_theatre_bar",
+            organizationName = "The Nattershack",
+            groupName = "The NatterShack Scheme - Mechanics Theatre Bar",
+            location = "Mechanics Theatre Bar, St James Street, Burnley",
+            town = "Burnley",
+            description = "Join us for a brew and a natter. Everyone welcome. No need to book.",
+            types = listOf(ServiceType.PEER_SUPPORT, ServiceType.SOCIAL, ServiceType.MENTAL_HEALTH, ServiceType.COMMUNITY_INTEREST_GROUPS),
+            features = listOf("Peer support", "Social activities", "Mental health support", "No booking required"),
+            contact = ContactInfo(phone = "The Nattershack", email = "Nattershack@yahoo.com"),
+            schedule = "Wednesday 11:00-13:00 (Weekly)",
+            status = ServiceStatus.APPROVED,
+            websiteUrl = "https://www.facebook.com/p/The-Natter-Shack-Scheme-100064392774105/"
+        ),
+        Service(
+            id = "the_nattershack_pendle_heritage_centre",
+            organizationName = "The Nattershack",
+            groupName = "The NatterShack Scheme - Pendle Heritage Centre",
+            location = "Pendle Heritage Centre, Barrowford",
+            town = "Barrowford",
+            description = "Join us for a brew and a natter. Everyone welcome. No need to book.",
+            types = listOf(ServiceType.PEER_SUPPORT, ServiceType.SOCIAL, ServiceType.MENTAL_HEALTH, ServiceType.COMMUNITY_INTEREST_GROUPS),
+            features = listOf("Peer support", "Social activities", "Mental health support", "No booking required"),
+            contact = ContactInfo(phone = "The Nattershack", email = "Nattershack@yahoo.com"),
+            schedule = "Wednesday 14:00-16:00 (Weekly)",
+            status = ServiceStatus.APPROVED,
+            websiteUrl = "https://www.facebook.com/p/The-Natter-Shack-Scheme-100064392774105/"
+        ),
+        Service(
+            id = "the_nattershack_kiddy_kids_harle_syke",
+            organizationName = "The Nattershack",
+            groupName = "The NatterShack Scheme - Kiddy Kids Harle Syke",
+            location = "Kiddy Kids, Kingsmill, Queen Street, Harle Syke",
+            town = "Burnley",
+            description = "Join us for a brew and a natter. Everyone welcome. No need to book.",
+            types = listOf(ServiceType.PEER_SUPPORT, ServiceType.SOCIAL, ServiceType.MENTAL_HEALTH, ServiceType.COMMUNITY_INTEREST_GROUPS),
+            features = listOf("Peer support", "Social activities", "Mental health support", "No booking required"),
+            contact = ContactInfo(phone = "The Nattershack", email = "Nattershack@yahoo.com"),
+            schedule = "Thursday 11:00-13:00 (Weekly)",
+            status = ServiceStatus.APPROVED,
+            websiteUrl = "https://www.facebook.com/p/The-Natter-Shack-Scheme-100064392774105/"
+        ),
+        Service(
+            id = "the_nattershack_colne_citadel",
+            organizationName = "The Nattershack",
+            groupName = "The NatterShack Scheme - Colne Citadel",
+            location = "Colne Citadel, Market Place, Colne, BB8 0HY",
+            town = "Colne",
+            description = "Join us for a brew and a natter. Everyone welcome. No need to book.",
+            types = listOf(ServiceType.PEER_SUPPORT, ServiceType.SOCIAL, ServiceType.MENTAL_HEALTH, ServiceType.COMMUNITY_INTEREST_GROUPS),
+            features = listOf("Peer support", "Social activities", "Mental health support", "No booking required"),
+            contact = ContactInfo(phone = "The Nattershack", email = "Nattershack@yahoo.com"),
+            schedule = "Friday 12:00-13:30 (Weekly)",
+            status = ServiceStatus.APPROVED,
+            websiteUrl = "https://www.facebook.com/p/The-Natter-Shack-Scheme-100064392774105/"
+        ),
+        Service(
+            id = "the_nattershack_downtown_coffee_shop",
+            organizationName = "The Nattershack",
+            groupName = "The NatterShack Scheme - Downtown Coffee Shop Burnley",
+            location = "Downtown Coffee Shop above New Look, Burnley",
+            town = "Burnley",
+            description = "Join us for a brew and a natter. Everyone welcome. No need to book.",
+            types = listOf(ServiceType.PEER_SUPPORT, ServiceType.SOCIAL, ServiceType.MENTAL_HEALTH, ServiceType.COMMUNITY_INTEREST_GROUPS),
+            features = listOf("Peer support", "Social activities", "Mental health support", "No booking required"),
+            contact = ContactInfo(phone = "The Nattershack", email = "Nattershack@yahoo.com"),
+            schedule = "Thursday 10:00 (Weekly)",
+            status = ServiceStatus.APPROVED,
+            websiteUrl = "https://www.facebook.com/p/The-Natter-Shack-Scheme-100064392774105/"
+        ),
+
+        // Additional services added 23/04/26 - 31 services
+        Service(
+            id = "icann_lancashire_benefits_advocacy_service",
+            organizationName = "ICANN",
+            groupName = "Lancashire Benefits Advocacy Service",
+            location = "ICANN, Howick House, Howick Park Avenue, Penwortham, Preston",
+            town = "Lancashire Wide",
+            description = "Help filling in benefits forms (PIP, ESA50, UC50, Child DLA, AA), preparation for health assessments, assessment support, appeal tribunal support, and help obtaining medical evidence.",
+            types = listOf(ServiceType.PRACTICAL),
+            features = listOf("Benefits forms support", "Assessment preparation", "Tribunal support", "Medical evidence support"),
+            contact = ContactInfo(phone = "01772746061", email = "admin@i-cann.org.uk"),
+            schedule = "Monday-Friday 09:00-17:00 (Daily)",
+            status = ServiceStatus.APPROVED,
+            websiteUrl = "https://i-cann.net/"
+        ),
+        Service(
+            id = "dwp_household_support_fund",
+            organizationName = "Department for Work & Pensions",
+            groupName = "Household Support Fund",
+            location = "Henry Street, Church, Accrington, BB5 4EP",
+            town = "Accrington",
+            description = "Funding help with short-term living costs including food, gas and electric bills, water bills, small white goods and essential items, plus budgeting and debt advice.",
+            types = listOf(ServiceType.PRACTICAL),
+            features = listOf("Living costs support", "Utility bill support", "Essential items support", "Budgeting and debt advice"),
+            contact = ContactInfo(phone = "07498536344", email = ""),
+            schedule = "Monday-Friday 09:00-17:00 (Weekly)",
+            status = ServiceStatus.APPROVED,
+            websiteUrl = "https://www.hyndburnleisure.co.uk/"
+        ),
+        Service(
+            id = "shelter_blackburn_support",
+            organizationName = "Shelter",
+            groupName = "Shelter Blackburn Advice Service",
+            location = "Blackburn Central Library, Blackburn, BB2 1AG",
+            town = "Blackburn",
+            description = "One-to-one personalised support with housing and homelessness issues, emergency helpline support, and free legal advice including court attendance for eviction and housing loss cases.",
+            types = listOf(ServiceType.PRACTICAL),
+            features = listOf("Housing advice", "Homelessness support", "Emergency helpline", "Legal advice"),
+            contact = ContactInfo(phone = "0808 800 4444", email = ""),
+            schedule = "Monday-Friday 08:00-17:00 (Weekly)",
+            status = ServiceStatus.APPROVED,
+            websiteUrl = "https://england.shelter.org.uk/"
+        ),
+        Service(
+            id = "community_solutions_purl_in_the_parlour",
+            organizationName = "Community Solutions North West",
+            groupName = "Purl in the Parlour",
+            location = "Elmfield Hall, Gatty Park, Accrington, BB5 4AA",
+            town = "Accrington",
+            description = "Knit and natter session to learn new knitting skills in a relaxed, friendly atmosphere for beginners and experienced knitters.",
+            types = listOf(ServiceType.COMMUNITY_INTEREST_GROUPS, ServiceType.SOCIAL),
+            features = listOf("Knitting", "Learning skills", "Social"),
+            contact = ContactInfo(phone = "01254 460080", email = ""),
+            schedule = "Monday 10:00-12:00 (Weekly)",
+            status = ServiceStatus.APPROVED
+        ),
+        Service(
+            id = "community_solutions_games_lego_group",
+            organizationName = "Community Solutions North West",
+            groupName = "Games & Lego Group",
+            location = "Elmfield Hall, Gatty Park, Accrington, BB5 4AA",
+            town = "Accrington",
+            description = "Build creative Lego structures, play card games, and enjoy a variety of board games.",
+            types = listOf(ServiceType.COMMUNITY_INTEREST_GROUPS, ServiceType.SOCIAL),
+            features = listOf("Lego", "Board games", "Card games", "Social"),
+            contact = ContactInfo(phone = "01254 460080", email = ""),
+            schedule = "Monday 10:00-12:00 (Weekly)",
+            status = ServiceStatus.APPROVED
+        ),
+        Service(
+            id = "community_solutions_scaled_modelling",
+            organizationName = "Community Solutions North West",
+            groupName = "Scaled Modelling",
+            location = "Elmfield Hall, Gatty Park, Accrington, BB5 4AA",
+            town = "Accrington",
+            description = "Build scaled models, share tips, and enjoy a relaxing, supportive hobby group.",
+            types = listOf(ServiceType.COMMUNITY_INTEREST_GROUPS, ServiceType.SOCIAL),
+            features = listOf("Model building", "Creative hobby", "Social"),
+            contact = ContactInfo(phone = "01254 460080", email = ""),
+            schedule = "Monday 13:00-15:00 (Weekly)",
+            status = ServiceStatus.APPROVED
+        ),
+        Service(
+            id = "community_solutions_team_solutions",
+            organizationName = "Community Solutions North West",
+            groupName = "Team Solutions",
+            location = "Elmfield Hall, Gatty Park, Accrington, BB5 4AA",
+            town = "Accrington",
+            description = "Group session with games and Lego activities in a friendly social environment.",
+            types = listOf(ServiceType.COMMUNITY_INTEREST_GROUPS, ServiceType.SOCIAL),
+            features = listOf("Lego", "Games", "Social"),
+            contact = ContactInfo(phone = "01254 460080", email = ""),
+            schedule = "Monday 13:00-15:00 (Weekly)",
+            status = ServiceStatus.APPROVED
+        ),
+        Service(
+            id = "community_solutions_guitar_group",
+            organizationName = "Community Solutions North West",
+            groupName = "Guitar Group",
+            location = "Elmfield Hall, Gatty Park, Accrington, BB5 4AA",
+            town = "Accrington",
+            description = "Supportive guitar group for everyone from complete beginners to experienced players.",
+            types = listOf(ServiceType.COMMUNITY_INTEREST_GROUPS, ServiceType.SOCIAL),
+            features = listOf("Guitar", "Music", "Beginner friendly", "Social"),
+            contact = ContactInfo(phone = "01254 460080", email = ""),
+            schedule = "Tuesday 10:00-12:00 (Weekly)",
+            status = ServiceStatus.APPROVED
+        ),
+        Service(
+            id = "community_solutions_cook_with_us",
+            organizationName = "Community Solutions North West",
+            groupName = "Cook with Us",
+            location = "Elmfield Hall, Gatty Park, Accrington, BB5 4AA",
+            town = "Accrington",
+            description = "Relaxed, welcoming cooking group for all ages and abilities to prepare simple meals together.",
+            types = listOf(ServiceType.COMMUNITY_INTEREST_GROUPS, ServiceType.SOCIAL),
+            features = listOf("Cooking", "Inclusive", "Social"),
+            contact = ContactInfo(phone = "01254 460080", email = ""),
+            schedule = "Tuesday 13:00-15:00 (Weekly)",
+            status = ServiceStatus.APPROVED
+        ),
+        Service(
+            id = "community_solutions_art_group",
+            organizationName = "Community Solutions North West",
+            groupName = "Art Group",
+            location = "Elmfield Hall, Gatty Park, Accrington, BB5 4AA",
+            town = "Accrington",
+            description = "Painting, drawing, and creative activities in a supportive and social environment.",
+            types = listOf(ServiceType.COMMUNITY_INTEREST_GROUPS, ServiceType.SOCIAL),
+            features = listOf("Art", "Creativity", "Social"),
+            contact = ContactInfo(phone = "01254 460080", email = ""),
+            schedule = "Wednesday 10:00-12:00 (Weekly)",
+            status = ServiceStatus.APPROVED
+        ),
+        Service(
+            id = "community_solutions_cooking_workshop",
+            organizationName = "Community Solutions North West",
+            groupName = "Cooking Workshop",
+            location = "Elmfield Hall, Gatty Park, Accrington, BB5 4AA",
+            town = "Accrington",
+            description = "Free six-week cooking workshop with main courses, desserts, and budget-friendly meal planning.",
+            types = listOf(ServiceType.COMMUNITY_INTEREST_GROUPS, ServiceType.SOCIAL),
+            features = listOf("Cooking workshop", "Meal planning", "Budget friendly"),
+            contact = ContactInfo(phone = "01254 460080", email = ""),
+            schedule = "Wednesday 13:00-15:00 (Weekly)",
+            status = ServiceStatus.APPROVED
+        ),
+        Service(
+            id = "community_solutions_grief_loss_cafe",
+            organizationName = "Community Solutions North West",
+            groupName = "Grief & Loss Cafe",
+            location = "Elmfield Hall, Gatty Park, Accrington, BB5 4AA",
+            town = "Accrington",
+            description = "Supportive group for grief and loss with connection, advice, and a welcoming social space.",
+            types = listOf(ServiceType.COMMUNITY_INTEREST_GROUPS, ServiceType.SOCIAL, ServiceType.PEER_SUPPORT),
+            features = listOf("Peer support", "Grief support", "Social connection"),
+            contact = ContactInfo(phone = "01254 460080", email = ""),
+            schedule = "Thursday 10:00-12:00 (Weekly)",
+            status = ServiceStatus.APPROVED
+        ),
+        Service(
+            id = "community_solutions_mens_group",
+            organizationName = "Community Solutions North West",
+            groupName = "Men's Group",
+            location = "Elmfield Hall, Gatty Park, Accrington, BB5 4AA",
+            town = "Accrington",
+            description = "A social group for men to chat, connect, and build supportive friendships.",
+            types = listOf(ServiceType.COMMUNITY_INTEREST_GROUPS, ServiceType.SOCIAL, ServiceType.PEER_SUPPORT),
+            features = listOf("Men only", "Peer support", "Social"),
+            contact = ContactInfo(phone = "01254 460080", email = ""),
+            schedule = "Thursday 10:00-12:00 (Weekly)",
+            status = ServiceStatus.APPROVED
+        ),
+        Service(
+            id = "community_solutions_ladies_group",
+            organizationName = "Community Solutions North West",
+            groupName = "Ladies Group",
+            location = "Elmfield Hall, Gatty Park, Accrington, BB5 4AA",
+            town = "Accrington",
+            description = "A welcoming social group for women to chat, connect, and make new friends.",
+            types = listOf(ServiceType.COMMUNITY_INTEREST_GROUPS, ServiceType.SOCIAL),
+            features = listOf("Women only", "Social"),
+            contact = ContactInfo(phone = "01254 460080", email = ""),
+            schedule = "Thursday 13:00-15:00 (Weekly)",
+            status = ServiceStatus.APPROVED
+        ),
+        Service(
+            id = "community_solutions_open_social",
+            organizationName = "Community Solutions North West",
+            groupName = "Open Social",
+            location = "Elmfield Hall, Gatty Park, Accrington, BB5 4AA",
+            town = "Accrington",
+            description = "Open social group with pool, music, conversation, and a welcoming atmosphere for everyone.",
+            types = listOf(ServiceType.COMMUNITY_INTEREST_GROUPS, ServiceType.SOCIAL),
+            features = listOf("Open to all", "Pool", "Music", "Social"),
+            contact = ContactInfo(phone = "01254 460080", email = ""),
+            schedule = "Thursday 13:00-15:00 (Weekly)",
+            status = ServiceStatus.APPROVED
+        ),
+        Service(
+            id = "community_solutions_sewing_crafts",
+            organizationName = "Community Solutions North West",
+            groupName = "Sewing Crafts",
+            location = "Elmfield Hall, Gatty Park, Accrington, BB5 4AA",
+            town = "Accrington",
+            description = "Bring your sewing projects, share tips, and learn techniques in a relaxed creative group.",
+            types = listOf(ServiceType.COMMUNITY_INTEREST_GROUPS, ServiceType.SOCIAL),
+            features = listOf("Sewing", "Crafts", "Creative", "Social"),
+            contact = ContactInfo(phone = "01254 460080", email = ""),
+            schedule = "Friday 10:00-12:00 (Weekly)",
+            status = ServiceStatus.APPROVED
+        ),
+        Service(
+            id = "community_solutions_shabby_to_chic",
+            organizationName = "Community Solutions North West",
+            groupName = "Shabby to Chic",
+            location = "Elmfield Hall, Gatty Park, Accrington, BB5 4AA",
+            town = "Accrington",
+            description = "Learn upcycling techniques to transform old items into creative new pieces.",
+            types = listOf(ServiceType.COMMUNITY_INTEREST_GROUPS, ServiceType.SOCIAL),
+            features = listOf("Upcycling", "Creative", "Social"),
+            contact = ContactInfo(phone = "01254 460080", email = ""),
+            schedule = "Friday 10:00-12:00 (Weekly)",
+            status = ServiceStatus.APPROVED
+        ),
+        Service(
+            id = "community_solutions_walking_group",
+            organizationName = "Community Solutions North West",
+            groupName = "Walking Group",
+            location = "Elmfield Hall, Gatty Park, Accrington, BB5 4AA",
+            town = "Accrington",
+            description = "Leisurely local walk for fresh air, gentle activity, and social connection.",
+            types = listOf(ServiceType.COMMUNITY_INTEREST_GROUPS, ServiceType.SOCIAL, ServiceType.SPORT_AND_FITNESS),
+            features = listOf("Walking", "Light exercise", "Social"),
+            contact = ContactInfo(phone = "01254 460080", email = ""),
+            schedule = "Friday 10:30 (Weekly)",
+            status = ServiceStatus.APPROVED
+        ),
+        Service(
+            id = "community_solutions_creative_crafts",
+            organizationName = "Community Solutions North West",
+            groupName = "Creative Crafts",
+            location = "Elmfield Hall, Gatty Park, Accrington, BB5 4AA",
+            town = "Accrington",
+            description = "Craft activities including paper crafts and colouring in a fun social setting.",
+            types = listOf(ServiceType.COMMUNITY_INTEREST_GROUPS, ServiceType.SOCIAL),
+            features = listOf("Crafts", "Creative activities", "Social"),
+            contact = ContactInfo(phone = "01254 460080", email = ""),
+            schedule = "Friday 13:00-15:00 (Weekly)",
+            status = ServiceStatus.APPROVED
+        ),
+        Service(
+            id = "newground_guided_walks_ladies_only",
+            organizationName = "Newground Together",
+            groupName = "Guided Walks (Ladies Only)",
+            location = "Pendle Women's Forum, 19-21 Market Square, Nelson, BB9 7LP",
+            town = "Nelson",
+            description = "Health walk for ladies, open to all abilities with graded routes.",
+            types = listOf(ServiceType.SOCIAL, ServiceType.SPORT_AND_FITNESS, ServiceType.COMMUNITY_INTEREST_GROUPS),
+            features = listOf("Ladies only", "Guided walk", "All abilities"),
+            contact = ContactInfo(phone = "03003305535", email = ""),
+            schedule = "Second Monday of every month 09:00-11:00",
+            status = ServiceStatus.APPROVED,
+            websiteUrl = "https://www.newgroundtogether.co.uk/"
+        ),
+        Service(
+            id = "newground_womens_walk_nelson",
+            organizationName = "Newground Together",
+            groupName = "Women's Walk",
+            location = "Female Friendship Group, Nelson Family Hub, BB9 8EL",
+            town = "Nelson",
+            description = "Ladies-only health walk lasting up to one hour and thirty minutes.",
+            types = listOf(ServiceType.COMMUNITY_INTEREST_GROUPS, ServiceType.SOCIAL, ServiceType.SPORT_AND_FITNESS),
+            features = listOf("Ladies only", "Guided walk", "Weekly"),
+            contact = ContactInfo(phone = "03003305535", email = ""),
+            schedule = "Monday 09:30-11:00 (Weekly)",
+            status = ServiceStatus.APPROVED,
+            websiteUrl = "https://www.newgroundtogether.co.uk/"
+        ),
+        Service(
+            id = "newground_guided_walk_ball_grove_colne",
+            organizationName = "Newground Together",
+            groupName = "Guided Walk - Ball Grove Park Colne",
+            location = "Ball Grove Park, Colne, BB8 7HZ",
+            town = "Colne",
+            description = "Open one-hour walk suitable for all, starting from Ball Grove Park.",
+            types = listOf(ServiceType.COMMUNITY_INTEREST_GROUPS, ServiceType.SOCIAL, ServiceType.SPORT_AND_FITNESS),
+            features = listOf("Guided walk", "All abilities", "Social"),
+            contact = ContactInfo(phone = "03003305535", email = ""),
+            schedule = "Monday 09:30-11:00 (Weekly)",
+            status = ServiceStatus.APPROVED,
+            websiteUrl = "https://www.newgroundtogether.co.uk/"
+        ),
+        Service(
+            id = "newground_guided_walk_padiham",
+            organizationName = "Newground Together",
+            groupName = "Guided Walk - Padiham Leisure Centre",
+            location = "Padiham Leisure Centre, BB12 8ED",
+            town = "Burnley",
+            description = "Two guided walks available with different lengths and difficulty options.",
+            types = listOf(ServiceType.COMMUNITY_INTEREST_GROUPS, ServiceType.SOCIAL, ServiceType.SPORT_AND_FITNESS),
+            features = listOf("Guided walk", "Multiple route options", "Social"),
+            contact = ContactInfo(phone = "03003305535", email = ""),
+            schedule = "Monday 13:15-15:00 (Weekly)",
+            status = ServiceStatus.APPROVED,
+            websiteUrl = "https://www.newgroundtogether.co.uk/"
+        ),
+        Service(
+            id = "newground_rossendale_roamers",
+            organizationName = "Newground Together",
+            groupName = "Guided Walks - Rossendale Roamers",
+            location = "Various locations across the Rossendale Valley",
+            town = "Rawtenstall",
+            description = "Weekly graded Rossendale Roamers walks at varying locations, usually up to two hours.",
+            types = listOf(ServiceType.COMMUNITY_INTEREST_GROUPS, ServiceType.SOCIAL, ServiceType.SPORT_AND_FITNESS),
+            features = listOf("Guided walks", "Graded difficulty", "Weekly"),
+            contact = ContactInfo(phone = "03003305535", email = ""),
+            schedule = "Tuesday 10:00-12:00 (Weekly)",
+            status = ServiceStatus.APPROVED,
+            websiteUrl = "https://www.newgroundtogether.co.uk/"
+        ),
+        Service(
+            id = "newground_guided_walk_stubbylee_bacup",
+            organizationName = "Newground Together",
+            groupName = "Guided Walk in Stubbylee Park",
+            location = "Stubbylee Lane, Bacup",
+            town = "Bacup",
+            description = "Local guided walk around Bacup, grade A, lasting around one hour.",
+            types = listOf(ServiceType.COMMUNITY_INTEREST_GROUPS, ServiceType.SOCIAL, ServiceType.SPORT_AND_FITNESS),
+            features = listOf("Guided walk", "Easy route", "Weekly"),
+            contact = ContactInfo(phone = "03003305535", email = ""),
+            schedule = "Tuesday 13:15-15:00 (Weekly)",
+            status = ServiceStatus.APPROVED,
+            websiteUrl = "https://www.newgroundtogether.co.uk/"
+        ),
+        Service(
+            id = "newground_guided_walks_east_lancs_wed",
+            organizationName = "Newground Together",
+            groupName = "Guided Walks - East Lancashire Wednesday",
+            location = "To be arranged on the day",
+            town = "Burnley",
+            description = "Weekly 2-6 mile guided walks at varying East Lancashire locations with grade B and C routes.",
+            types = listOf(ServiceType.COMMUNITY_INTEREST_GROUPS, ServiceType.SOCIAL, ServiceType.SPORT_AND_FITNESS),
+            features = listOf("Guided walks", "2-6 miles", "Weekly"),
+            contact = ContactInfo(phone = "03003305535", email = ""),
+            schedule = "Wednesday 10:00-12:00 (Weekly)",
+            status = ServiceStatus.APPROVED,
+            websiteUrl = "https://www.newgroundtogether.co.uk/"
+        ),
+        Service(
+            id = "newground_minhaj_womens_walk",
+            organizationName = "Newground Together",
+            groupName = "Minhaj Women's Walk",
+            location = "Hodge House Community Centre, BB9 8LJ",
+            town = "Nelson",
+            description = "Ladies-only health walk suitable for all abilities.",
+            types = listOf(ServiceType.COMMUNITY_INTEREST_GROUPS, ServiceType.SOCIAL, ServiceType.SPORT_AND_FITNESS),
+            features = listOf("Ladies only", "Guided walk", "All abilities"),
+            contact = ContactInfo(phone = "03003305535", email = ""),
+            schedule = "Wednesday 10:30-11:30 (Weekly)",
+            status = ServiceStatus.APPROVED,
+            websiteUrl = "https://www.newgroundtogether.co.uk/"
+        ),
+        Service(
+            id = "newground_kiddrow_lane_guided_walk",
+            organizationName = "Newground Together",
+            groupName = "Kiddrow Lane Guided Walk",
+            location = "Kiddrow Lane Health Centre, Kiddrow Lane, Burnley, BB12 6LH",
+            town = "Burnley",
+            description = "Guided walk with class A and B routes, lasting around one hour and thirty minutes.",
+            types = listOf(ServiceType.COMMUNITY_INTEREST_GROUPS, ServiceType.SOCIAL, ServiceType.SPORT_AND_FITNESS),
+            features = listOf("Guided walk", "Multiple route classes", "Weekly"),
+            contact = ContactInfo(phone = "03003305535", email = ""),
+            schedule = "Thursday 11:00-12:30 (Weekly)",
+            status = ServiceStatus.APPROVED,
+            websiteUrl = "https://www.newgroundtogether.co.uk/"
+        ),
+        Service(
+            id = "newground_haslingden_guided_walk",
+            organizationName = "Newground Together",
+            groupName = "Haslingden Guided Walk",
+            location = "Haslingden Community Link, Bury Road, Haslingden, Rossendale, BB4 5PG",
+            town = "Haslingden",
+            description = "Easy local guided walk from Haslingden Community Link.",
+            types = listOf(ServiceType.COMMUNITY_INTEREST_GROUPS, ServiceType.SOCIAL, ServiceType.SPORT_AND_FITNESS),
+            features = listOf("Guided walk", "Easy route", "Weekly"),
+            contact = ContactInfo(phone = "03003305535", email = ""),
+            schedule = "Thursday 13:30-15:00 (Weekly)",
+            status = ServiceStatus.APPROVED,
+            websiteUrl = "https://www.newgroundtogether.co.uk/"
+        ),
+        Service(
+            id = "newground_men_children_walk",
+            organizationName = "Newground Together",
+            groupName = "Men & Children's Walk",
+            location = "Burnley Wood Neighbourhood Centre, Burnley, BB11 3NY",
+            town = "Burnley",
+            description = "Monthly pram-friendly walk for men and children with fathers, grandparents, and carers.",
+            types = listOf(ServiceType.COMMUNITY_INTEREST_GROUPS, ServiceType.SOCIAL, ServiceType.SPORT_AND_FITNESS),
+            features = listOf("Men and children", "Pram friendly", "Monthly"),
+            contact = ContactInfo(phone = "03003305535", email = ""),
+            schedule = "Third Saturday of month 10:00-11:30",
+            status = ServiceStatus.APPROVED,
+            websiteUrl = "https://www.newgroundtogether.co.uk/event/trek-talk-monthly-walk-for-men-and-children/2026-05-16/"
+        ),
         
         // Other Services - 1 service
         Service(
@@ -1038,7 +1587,9 @@ object ServiceManager {
             schedule = "Various times",
             status = ServiceStatus.APPROVED
         )
-    )
+    ).map { service ->
+        service.copy(id = generateServiceId(service.organizationName, service.groupName))
+    }
 
     private const val PREFS_NAME = "service_cache"
     private const val PREFS_KEY = "services_list"
@@ -1095,6 +1646,7 @@ object ServiceManager {
                                 organizationName = getFieldValue(caseInsensitiveData, "organisationname", "organizationname", "organization_name", "organization") ?: "",
                                 groupName = getFieldValue(caseInsensitiveData, "groupprogramname", "groupname", "group_name", "group") ?: "",
                                 location = getFieldValue(caseInsensitiveData, "locationdetails", "location", "address", "place") ?: "",
+                                town = getFieldValue(caseInsensitiveData, "town", "city", "locality", "area") ?: "",
                                 description = getFieldValue(caseInsensitiveData, "groupdescription", "description", "desc", "details") ?: "",
                                 types = parseServiceTypes(caseInsensitiveData, serviceData),
                                 features = parseFeatures(caseInsensitiveData, serviceData),
@@ -1149,6 +1701,11 @@ object ServiceManager {
         }
     }
 
+    /** Last merged list persisted under [PREFS_NAME] (JSON), without touching Firestore. */
+    fun loadCachedServices(context: Context): List<Service> {
+        return loadFromCache(getPrefs(context))
+    }
+
     private fun getPrefs(context: Context): SharedPreferences {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     }
@@ -1191,23 +1748,8 @@ object ServiceManager {
 
     // Helper function to parse service types with case-insensitive handling
     private fun parseServiceTypes(data: Map<String, Any?>, originalData: Map<String, Any?>): List<ServiceType> {
-        // First try to get as a list (new format)
-        val typesList = data["types"] as? List<String>
-        if (typesList != null && typesList.isNotEmpty()) {
-            return typesList.mapNotNull { typeName ->
-                try {
-                    ServiceType.valueOf(typeName.uppercase())
-                } catch (e: IllegalArgumentException) {
-                    try {
-                        ServiceType.values().find { it.name.equals(typeName, ignoreCase = true) }
-                    } catch (e: Exception) {
-                        null
-                    }
-                }
-            }
-        }
-        
-        // Try to get as comma-separated string (ServiceRepository format)
+        // Prefer "Service Type" string — ServiceRepository updates and SubmitServiceScreen write this;
+        // a legacy `types` array may be stale if only the string was updated.
         val typesString = data["servicetype"] as? String
         if (!typesString.isNullOrBlank()) {
             return typesString.split(",").mapNotNull { typeName ->
@@ -1222,7 +1764,26 @@ object ServiceManager {
                 }
             }
         }
-        
+
+        val rawTypes = data["types"]
+        val typesList = when (rawTypes) {
+            is List<*> -> rawTypes.mapNotNull { it as? String }
+            else -> emptyList()
+        }
+        if (typesList.isNotEmpty()) {
+            return typesList.mapNotNull { typeName ->
+                try {
+                    ServiceType.valueOf(typeName.trim().uppercase().replace(" ", "_"))
+                } catch (e: IllegalArgumentException) {
+                    try {
+                        ServiceType.values().find { it.name.equals(typeName, ignoreCase = true) }
+                    } catch (e: Exception) {
+                        null
+                    }
+                }
+            }
+        }
+
         return emptyList()
     }
 

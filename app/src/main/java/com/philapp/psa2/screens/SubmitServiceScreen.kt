@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import com.philapp.psa2.model.AreaList
+import com.philapp.psa2.utils.generateServiceId
 
 data class ScheduleEntry(var day: String, var startTime: String, var endTime: String)
 
@@ -38,7 +39,6 @@ fun SubmitServiceScreen(navController: NavController) {
     var isSubmitting by remember { mutableStateOf(false) }
 
     val serviceTypeOptions = listOf("Mental Health", "Social", "Sport & Fitness", "Peer Support")
-    val statusOptions = listOf("Pending", "Approved", "Rejected")
     val frequencyOptions = listOf("weekly", "fortnightly", "monthly")
     val daysOfWeek = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
     val timeOptions = listOf("9am", "10am", "11am", "12pm", "1pm", "2pm", "3pm", "4pm", "5pm")
@@ -328,34 +328,8 @@ fun SubmitServiceScreen(navController: NavController) {
         }
         Spacer(modifier = Modifier.height(8.dp))
         // Status dropdown
-        var statusExpanded by remember { mutableStateOf(false) }
-        ExposedDropdownMenuBox(
-            expanded = statusExpanded,
-            onExpandedChange = { statusExpanded = !statusExpanded }
-        ) {
-            OutlinedTextField(
-                value = status,
-                onValueChange = {},
-                readOnly = true,
-                label = { Text("Status") },
-                modifier = Modifier.fillMaxWidth(),
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = statusExpanded) }
-            )
-            ExposedDropdownMenu(
-                expanded = statusExpanded,
-                onDismissRequest = { statusExpanded = false }
-            ) {
-                statusOptions.forEach { option ->
-                    DropdownMenuItem(
-                        text = { Text(option) },
-                        onClick = {
-                            status = option
-                            statusExpanded = false
-                        }
-                    )
-                }
-            }
-        }
+        // New services are always submitted as "Pending" and require admin approval.
+        // Keeping this field fixed prevents non-admin users from auto-approving.
         Spacer(modifier = Modifier.height(16.dp))
         if (errorMessage.isNotEmpty()) {
             Text(errorMessage, color = MaterialTheme.colorScheme.error)
@@ -395,7 +369,8 @@ fun SubmitServiceScreen(navController: NavController) {
                     // Submit to Firestore
                     CoroutineScope(Dispatchers.IO).launch {
                         try {
-                            db.collection("services").add(serviceMap)
+                            val serviceId = generateServiceId(organisationName, groupName)
+                            db.collection("services").document(serviceId).set(serviceMap)
                                 .addOnSuccessListener {
                                     isSubmitting = false
                                     successMessage = "Service submitted successfully!"

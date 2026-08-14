@@ -1,6 +1,9 @@
 package com.philapp.psa2.repository
 
+import android.content.Context
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
 import com.philapp.psa2.model.Service
 import com.philapp.psa2.model.ServiceStatus
 import com.philapp.psa2.model.ServiceType
@@ -11,10 +14,15 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.first
 import android.util.Log
 import java.util.NoSuchElementException
+import com.philapp.psa2.utils.generateServiceId
 
 class ServiceRepository {
     private val db = FirebaseFirestore.getInstance()
     private val servicesCollection = db.collection("services")
+
+    // Ensures we only auto-approve existing pending services once per app install/update.
+    private val approvalMigrationPrefsName = "service_approval_migration"
+    private val approvalMigrationDoneKey = "approved_existing_pending_services_once"
 
     init {
         println("ServiceRepository initialized with collection: ${servicesCollection.path}")
@@ -47,22 +55,6 @@ class ServiceRepository {
             }
     }
 
-    // Updated helper function to generate descriptive document IDs
-    private fun generateDescriptiveId(organizationName: String, groupName: String): String {
-        // Create a clean, URL-safe ID from the organization and group name
-        val cleanOrg = organizationName.replace(Regex("[^a-zA-Z0-9\\s]"), "").trim()
-        val cleanGroup = groupName.replace(Regex("[^a-zA-Z0-9\\s]"), "").trim()
-        
-        // Combine them with underscore and convert to lowercase
-        // Using underscore instead of slash to avoid Firebase path issues
-        val descriptiveId = "${cleanOrg}_${cleanGroup}"
-            .replace(Regex("\\s+"), "-") // Replace spaces with hyphens
-            .lowercase()
-            .take(500) // Limit length to avoid Firebase document ID limits
-        
-        return descriptiveId
-    }
-
     suspend fun addService(service: Service): Result<String> {
         return try {
             // Check for duplicates before adding - use direct query instead of Flow
@@ -76,6 +68,7 @@ class ServiceRepository {
                             organizationName = data["Organisation Name"] as? String ?: "",
                             groupName = data["Group/Program Name"] as? String ?: "",
                             location = data["Location Details"] as? String ?: "",
+                            town = data["Town"] as? String ?: "",
                             description = data["Group Description"] as? String ?: "",
                             types = listOf(), // We don't need types for duplicate checking
                             features = listOf(),
@@ -106,16 +99,18 @@ class ServiceRepository {
             serviceMap["Organisation Name"] = service.organizationName
             serviceMap["Group/Program Name"] = service.groupName
             serviceMap["Location Details"] = service.location
+            serviceMap["Town"] = service.town
             serviceMap["Group Description"] = service.description
             serviceMap["Service Type"] = service.types.joinToString(", ") { it.name }
+            serviceMap["types"] = service.types.map { it.name }
             serviceMap["Features"] = service.features.joinToString(", ")
             serviceMap["Contact Information"] = service.contact?.phone ?: ""
             serviceMap["Session Times"] = service.schedule ?: ""
             serviceMap["Status"] = service.status.name
             serviceMap["Website URL"] = service.websiteUrl ?: ""
             
-            // Generate descriptive document ID using just organization and group name
-            val descriptiveId = generateDescriptiveId(service.organizationName, service.groupName)
+            // Canonical ID: derived from organisation + group name (must match Firestore doc ID)
+            val descriptiveId = generateServiceId(service.organizationName, service.groupName)
             
             Log.d("ServiceRepository", "Adding new service: ${service.organizationName} - ${service.groupName}")
             Log.d("ServiceRepository", "Using descriptive ID: $descriptiveId")
@@ -136,8 +131,10 @@ class ServiceRepository {
         serviceMap["Organisation Name"] = service.organizationName
         serviceMap["Group/Program Name"] = service.groupName
         serviceMap["Location Details"] = service.location
+        serviceMap["Town"] = service.town
         serviceMap["Group Description"] = service.description
         serviceMap["Service Type"] = service.types.joinToString(", ") { it.name }
+        serviceMap["types"] = service.types.map { it.name }
         serviceMap["Features"] = service.features.joinToString(", ")
         serviceMap["Contact Information"] = service.contact?.phone ?: ""
         serviceMap["Session Times"] = service.schedule ?: ""
@@ -145,8 +142,8 @@ class ServiceRepository {
         serviceMap["Website URL"] = service.websiteUrl ?: ""
         
         try {
-            // Use update() instead of set() to preserve existing fields
-            db.collection("services").document(service.id).update(serviceMap).await()
+            // Merge preserves other Firestore fields and matches documents created outside this app.
+            servicesCollection.document(service.id).set(serviceMap, SetOptions.merge()).await()
             Log.d("ServiceRepository", "Successfully updated service: ${service.organizationName} - ${service.groupName}")
         } catch (e: Exception) {
             Log.e("ServiceRepository", "Error updating service", e)
@@ -171,14 +168,15 @@ class ServiceRepository {
     suspend fun getServiceById(serviceId: String): Result<Service> {
         return try {
             val doc = servicesCollection.document(serviceId).get().await()
-            val service = doc.toObject(Service::class.java)?.copy(id = doc.id)
-            
+            if (!doc.exists()) {
+                return Result.failure(NoSuchElementException("Service not found: $serviceId"))
+            }
+            val service = parseServiceFromFirestore(doc)
             if (service != null) {
                 Log.d("ServiceRepository", "Retrieved service: ${service.organizationName} - ${service.groupName}")
                 Result.success(service)
             } else {
-                Log.d("ServiceRepository", "Service not found: $serviceId")
-                Result.failure(NoSuchElementException("Service not found"))
+                Result.failure(NoSuchElementException("Service not found: $serviceId"))
             }
         } catch (e: Exception) {
             Log.e("ServiceRepository", "Error getting service by ID", e)
@@ -186,45 +184,49 @@ class ServiceRepository {
         }
     }
 
+    /** Firestore uses human-readable field names, not Kotlin [Service] property names. */
+    private fun parseServiceFromFirestore(doc: DocumentSnapshot): Service? {
+        val data = doc.data ?: return null
+        return try {
+            Service(
+                id = doc.id,
+                organizationName = data["Organisation Name"] as? String ?: "",
+                groupName = data["Group/Program Name"] as? String ?: "",
+                location = data["Location Details"] as? String ?: "",
+                town = data["Town"] as? String ?: "",
+                description = data["Group Description"] as? String ?: "",
+                types = (data["Service Type"] as? String)?.split(",")?.mapNotNull { typeStr ->
+                    try {
+                        ServiceType.valueOf(typeStr.trim().uppercase().replace(" ", "_"))
+                    } catch (_: Exception) {
+                        Log.w("ServiceRepository", "Failed to parse service type: $typeStr")
+                        null
+                    }
+                } ?: listOf(),
+                features = (data["Features"] as? String)?.split(",")?.map { it.trim() } ?: listOf(),
+                contact = ContactInfo(
+                    phone = data["Contact Information"] as? String ?: "",
+                    email = ""
+                ),
+                schedule = data["Session Times"] as? String,
+                status = when ((data["Status"] as? String)?.uppercase()) {
+                    "APPROVED" -> ServiceStatus.APPROVED
+                    "REJECTED" -> ServiceStatus.REJECTED
+                    else -> ServiceStatus.PENDING
+                },
+                websiteUrl = data["Website URL"] as? String
+            )
+        } catch (e: Exception) {
+            Log.e("ServiceRepository", "Error parsing document ${doc.id}", e)
+            null
+        }
+    }
+
     fun getAllServices(): Flow<List<Service>> = flow {
         try {
             val snapshot = servicesCollection.get().await()
             val services = snapshot.documents.mapNotNull { doc ->
-                try {
-                    val data = doc.data
-                    if (data != null) {
-                        Service(
-                            id = doc.id,
-                            organizationName = data["Organisation Name"] as? String ?: "",
-                            groupName = data["Group/Program Name"] as? String ?: "",
-                            location = data["Location Details"] as? String ?: "",
-                            description = data["Group Description"] as? String ?: "",
-                            types = (data["Service Type"] as? String)?.split(",")?.mapNotNull { typeStr ->
-                                try { 
-                                    ServiceType.valueOf(typeStr.trim().uppercase().replace(" ", "_")) 
-                                } catch (_: Exception) { 
-                                    Log.w("ServiceRepository", "Failed to parse service type: $typeStr")
-                                    null 
-                                }
-                            } ?: listOf(),
-                            features = (data["Features"] as? String)?.split(",")?.map { it.trim() } ?: listOf(),
-                            contact = ContactInfo(
-                                phone = data["Contact Information"] as? String ?: "",
-                                email = ""
-                            ),
-                            schedule = data["Session Times"] as? String,
-                            status = when ((data["Status"] as? String)?.uppercase()) {
-                                "APPROVED" -> ServiceStatus.APPROVED
-                                "REJECTED" -> ServiceStatus.REJECTED
-                                else -> ServiceStatus.PENDING
-                            },
-                            websiteUrl = data["Website URL"] as? String
-                        )
-                    } else null
-                } catch (e: Exception) {
-                    Log.e("ServiceRepository", "Error converting document ${doc.id}", e)
-                    null
-                }
+                parseServiceFromFirestore(doc)
             }
             emit(services)
         } catch (e: Exception) {
@@ -235,8 +237,15 @@ class ServiceRepository {
 
     fun getApprovedServices(): Flow<List<Service>> = flow {
         try {
+            // Handle historical Firestore casing: "APPROVED" (enum name) vs "Approved" / "approved".
+            val approvedStatusValues = listOf(
+                ServiceStatus.APPROVED.name, // "APPROVED"
+                ServiceStatus.APPROVED.name.lowercase(), // "approved"
+                ServiceStatus.APPROVED.name.lowercase().replaceFirstChar { it.titlecase() } // "Approved"
+            )
+
             val snapshot = servicesCollection
-                .whereEqualTo("Status", "APPROVED")
+                .whereIn("Status", approvedStatusValues)
                 .get()
                 .await()
             val services = snapshot.documents.mapNotNull { doc ->
@@ -248,6 +257,7 @@ class ServiceRepository {
                             organizationName = data["Organisation Name"] as? String ?: "",
                             groupName = data["Group/Program Name"] as? String ?: "",
                             location = data["Location Details"] as? String ?: "",
+                            town = data["Town"] as? String ?: "",
                             description = data["Group Description"] as? String ?: "",
                             types = (data["Service Type"] as? String)?.split(",")?.mapNotNull { typeStr ->
                                 try { 
@@ -314,8 +324,15 @@ class ServiceRepository {
 
     fun getPendingServices(): Flow<List<Service>> = flow {
         try {
+            // Handle historical Firestore casing: "PENDING" (enum name) vs "Pending" / "pending".
+            val pendingStatusValues = listOf(
+                ServiceStatus.PENDING.name, // "PENDING"
+                ServiceStatus.PENDING.name.lowercase(), // "pending"
+                ServiceStatus.PENDING.name.lowercase().replaceFirstChar { it.titlecase() } // "Pending"
+            )
+
             val snapshot = servicesCollection
-                .whereEqualTo("Status", ServiceStatus.PENDING.name)
+                .whereIn("Status", pendingStatusValues)
                 .get()
                 .await()
             
@@ -328,6 +345,7 @@ class ServiceRepository {
                             organizationName = data["Organisation Name"] as? String ?: "",
                             groupName = data["Group/Program Name"] as? String ?: "",
                             location = data["Location Details"] as? String ?: "",
+                            town = data["Town"] as? String ?: "",
                             description = data["Group Description"] as? String ?: "",
                             types = (data["Service Type"] as? String)?.split(",")?.mapNotNull { typeStr ->
                                 try { 
@@ -372,6 +390,52 @@ class ServiceRepository {
         }
     }
 
+    /**
+     * One-time migration: on the app's first start, flip all existing `Pending` services to `Approved`.
+     * After this migration runs successfully, newly added services should remain `Pending` and require admin approval.
+     */
+    suspend fun approveExistingPendingServicesOnFirstRun(context: Context): Result<Int> {
+        val prefs = context.getSharedPreferences(approvalMigrationPrefsName, Context.MODE_PRIVATE)
+        val alreadyCompleted = prefs.getBoolean(approvalMigrationDoneKey, false)
+        if (alreadyCompleted) return Result.success(0)
+
+        return try {
+            // Firestore may contain historical values like "Pending" (Title Case) instead of "PENDING" (enum name).
+            val pendingStatusValues = listOf(
+                ServiceStatus.PENDING.name, // "PENDING"
+                ServiceStatus.PENDING.name.lowercase(), // "pending"
+                ServiceStatus.PENDING.name.lowercase().replaceFirstChar { it.titlecase() } // "Pending"
+            )
+
+            val snapshot = servicesCollection
+                .whereIn("Status", pendingStatusValues)
+                .get()
+                .await()
+
+            val pendingServices = snapshot.documents
+            var updatedCount = 0
+
+            // Mark migration as done once we've captured the set of "existing pending" docs.
+            // This prevents newly submitted services (added after migration start) from being auto-approved
+            // on a later retry.
+            prefs.edit().putBoolean(approvalMigrationDoneKey, true).apply()
+
+            if (pendingServices.isNotEmpty()) {
+                val batch = db.batch()
+                pendingServices.forEach { doc ->
+                    batch.update(doc.reference, "Status", ServiceStatus.APPROVED.name)
+                    updatedCount++
+                }
+                batch.commit().await()
+            }
+
+            Result.success(updatedCount)
+        } catch (e: Exception) {
+            Log.e("ServiceRepository", "Error approving existing pending services", e)
+            Result.failure(e)
+        }
+    }
+
     suspend fun removeDuplicateServices() {
         val snapshot = servicesCollection.get().await()
         val services = snapshot.documents.mapNotNull { doc ->
@@ -382,6 +446,7 @@ class ServiceRepository {
                     organizationName = data["Organisation Name"] as? String ?: "",
                     groupName = data["Group/Program Name"] as? String ?: "",
                     location = data["Location Details"] as? String ?: "",
+                    town = data["Town"] as? String ?: "",
                     description = data["Group Description"] as? String ?: "",
                     types = listOf(), // Types can be parsed if needed
                     features = listOf(),
@@ -412,6 +477,7 @@ class ServiceRepository {
                         organizationName = data["Organisation Name"] as? String ?: "",
                         groupName = data["Group/Program Name"] as? String ?: "",
                         location = data["Location Details"] as? String ?: "",
+                        town = data["Town"] as? String ?: "",
                         description = data["Group Description"] as? String ?: "",
                         types = (data["Service Type"] as? String)?.split(",")?.mapNotNull { typeStr ->
                             try { 
@@ -475,7 +541,7 @@ class ServiceRepository {
                     }
                     
                     // Generate descriptive ID using just organization and group name
-                    val descriptiveId = generateDescriptiveId(organizationName, groupName)
+                    val descriptiveId = generateServiceId(organizationName, groupName)
                     Log.d("ServiceRepository", "Generated descriptive ID: $descriptiveId")
                     
                     // Only migrate if the ID is different
@@ -565,7 +631,7 @@ class ServiceRepository {
                 )
                 
                 sampleServices.forEach { serviceData ->
-                    val descriptiveId = generateDescriptiveId(
+                    val descriptiveId = generateServiceId(
                         serviceData["Organisation Name"] as String,
                         serviceData["Group/Program Name"] as String
                     )

@@ -71,8 +71,8 @@ class AdminViewModel(
     )
 
     init {
-        loadPendingServices()
-        loadFirebaseServiceCount()
+        // Intentionally not auto-loading here: the admin screen triggers refresh via `LaunchedEffect`.
+        // This avoids racing with the one-time pending->approved migration on first app start.
     }
 
     fun loadPendingServices() {

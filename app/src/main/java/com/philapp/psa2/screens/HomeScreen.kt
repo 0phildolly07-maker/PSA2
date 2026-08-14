@@ -347,6 +347,13 @@ private fun LocationSelector(
             expanded = expanded,
             onDismissRequest = { expanded = false }
         ) {
+            DropdownMenuItem(
+                text = { Text("Anywhere") },
+                onClick = {
+                    onLocationSelected("all")
+                    expanded = false
+                }
+            )
             AreaList.Lancashire_Areas.forEach { area ->
                 DropdownMenuItem(
                     text = { Text(area) },

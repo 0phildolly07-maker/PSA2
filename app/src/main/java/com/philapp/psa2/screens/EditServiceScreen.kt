@@ -7,6 +7,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -23,11 +25,21 @@ fun EditServiceScreen(
     serviceId: String,
     viewModel: SearchViewModel
 ) {
-    val service = remember(serviceId) {
-        viewModel.services.value.find { it.id == serviceId }
-    } ?: run {
-        LaunchedEffect(Unit) {
-            navController.navigateUp()
+    val services by viewModel.services.collectAsState()
+    val service = services.find { it.id == serviceId }
+    if (service == null) {
+        LaunchedEffect(serviceId, services) {
+            if (services.isNotEmpty()) {
+                navController.navigateUp()
+            }
+        }
+        if (services.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
         }
         return
     }
@@ -223,15 +235,19 @@ fun EditServiceScreen(
                         organizationName = organizationName,
                         groupName = groupName,
                         location = fullLocation,
+                        town = selectedTown,
                         description = description,
                         types = selectedTypes.toList(),
                         features = features,
-                        contactPhone = contactPhone.takeIf { it.isNotBlank() },
-                        contactEmail = contactEmail.takeIf { it.isNotBlank() },
-                        schedule = schedule.takeIf { it.isNotBlank() },
-                        websiteUrl = websiteUrl.takeIf { it.isNotBlank() }
-                    )
-                    navController.navigateUp()
+                        contactPhone = contactPhone,
+                        contactEmail = contactEmail,
+                        schedule = schedule,
+                        websiteUrl = websiteUrl.trim()
+                    ) { err ->
+                        if (err == null) {
+                            navController.navigateUp()
+                        }
+                    }
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {

@@ -138,7 +138,11 @@ fun ResultsScreen(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Searching all locations for '$customSearch'",
+                                text = if (!customSearch.isNullOrBlank()) {
+                                    "Searching all locations for '$customSearch'"
+                                } else {
+                                    "Searching all locations"
+                                },
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer
                             )
