@@ -21,30 +21,6 @@ data class ContactInfo(
     val email: String
 )
 
-data class ExternalActivity(
-    val id: String,
-    val name: String,
-    val organization: String,
-    val location: String,
-    val description: String,
-    val types: List<ServiceType>,
-    val schedule: String?,
-    val contact: ContactInfo?,
-    val features: List<String>,
-    val source: String
-)
-
-data class ActivitiesResponse(
-    val results: List<ExternalActivity>
-)
-
-sealed class SearchState {
-    object Initial : SearchState()
-    object Loading : SearchState()
-    data class Success(val services: List<Service>) : SearchState()
-    data class Error(val message: String) : SearchState()
-} 
-
 enum class ServiceType {
     SOCIAL,
     MENTAL_HEALTH,
@@ -56,7 +32,8 @@ enum class ServiceType {
     FOOD_BANKS,
     PRACTICAL,
     EMPLOYMENT,
-    COMMUNITY_INTEREST_GROUPS;
+    COMMUNITY_INTEREST_GROUPS,
+    HOUSING;
 
     fun getDisplayName(): String {
         return when (this) {
@@ -71,6 +48,7 @@ enum class ServiceType {
             PRACTICAL -> "Practical Support"
             EMPLOYMENT -> "Employment & Volunteering"
             COMMUNITY_INTEREST_GROUPS -> "Community Interest Groups"
+            HOUSING -> "Housing"
         }
     }
 }

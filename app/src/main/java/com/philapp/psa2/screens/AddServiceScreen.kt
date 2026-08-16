@@ -369,10 +369,11 @@ fun AddServiceScreen(
                     }
 
                     val newService = Service(
-                        id = java.util.UUID.randomUUID().toString(),
+                        id = "",
                         organizationName = organizationName,
                         groupName = groupName,
                         location = fullLocation,
+                        town = town,
                         description = description,
                         types = selectedTypes.toList(),
                         features = features,

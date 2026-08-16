@@ -93,13 +93,8 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.5.0")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.7.0")
 
-    // Google Places API
-    implementation("com.google.android.libraries.places:places:3.3.0")
-    
-    // For making HTTP requests
-    implementation("com.squareup.retrofit2:retrofit:2.9.0")
-    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
-    
+    implementation("com.google.code.gson:gson:2.10.1")
+
     // For location services
     implementation("com.google.android.gms:play-services-location:21.1.0")
 

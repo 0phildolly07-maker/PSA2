@@ -13,6 +13,7 @@ import com.philapp.psa2.model.ServiceType
 import com.philapp.psa2.model.ServiceStatus
 import com.philapp.psa2.model.ContactInfo
 import android.util.Log
+import com.philapp.psa2.utils.FirestoreServiceMapper
 import com.philapp.psa2.utils.generateServiceId
 
 object ServiceManager {
@@ -1203,7 +1204,7 @@ object ServiceManager {
             location = "Blackburn Central Library, Blackburn, BB2 1AG",
             town = "Blackburn",
             description = "One-to-one personalised support with housing and homelessness issues, emergency helpline support, and free legal advice including court attendance for eviction and housing loss cases.",
-            types = listOf(ServiceType.PRACTICAL),
+            types = listOf(ServiceType.PRACTICAL, ServiceType.HOUSING),
             features = listOf("Housing advice", "Homelessness support", "Emergency helpline", "Legal advice"),
             contact = ContactInfo(phone = "0808 800 4444", email = ""),
             schedule = "Monday-Friday 08:00-17:00 (Weekly)",
@@ -1588,11 +1589,13 @@ object ServiceManager {
             status = ServiceStatus.APPROVED
         )
     ).map { service ->
-        service.copy(id = generateServiceId(service.organizationName, service.groupName))
+        service.copy(id = generateServiceId(service.organizationName, service.groupName, service.town))
     }
 
     private const val PREFS_NAME = "service_cache"
     private const val PREFS_KEY = "services_list"
+    private const val PREFS_VERSION_KEY = "services_cache_version"
+    private const val CACHE_VERSION = 3
     private val gson = Gson()
 
     private var listenerRegistration: ListenerRegistration? = null
@@ -1680,18 +1683,26 @@ object ServiceManager {
     }
 
     private fun overrideWithFirestore(firestore: List<Service>, hardcoded: List<Service>): List<Service> {
-        val resultMap = hardcoded.associateBy { it.id }.toMutableMap()
-        for (service in firestore) {
-            resultMap[service.id] = service
-        }
-        return resultMap.values.toList()
+        val result = LinkedHashMap<String, Service>()
+        hardcoded.forEach { result[listingKey(it)] = it }
+        firestore.forEach { result[listingKey(it)] = it }
+        return result.values.toList()
+    }
+
+    private fun listingKey(service: Service): String {
+        return listOf(service.organizationName, service.groupName, service.location)
+            .joinToString("|") { it.trim().lowercase() }
     }
 
     private fun saveToCache(prefs: SharedPreferences, services: List<Service>) {
-        prefs.edit().putString(PREFS_KEY, gson.toJson(services)).apply()
+        prefs.edit()
+            .putInt(PREFS_VERSION_KEY, CACHE_VERSION)
+            .putString(PREFS_KEY, gson.toJson(services))
+            .apply()
     }
 
     private fun loadFromCache(prefs: SharedPreferences): List<Service> {
+        if (prefs.getInt(PREFS_VERSION_KEY, 0) != CACHE_VERSION) return emptyList()
         val json = prefs.getString(PREFS_KEY, null) ?: return emptyList()
         val type = object : TypeToken<List<Service>>() {}.type
         return try {
@@ -1746,23 +1757,10 @@ object ServiceManager {
         return null
     }
 
-    // Helper function to parse service types with case-insensitive handling
     private fun parseServiceTypes(data: Map<String, Any?>, originalData: Map<String, Any?>): List<ServiceType> {
-        // Prefer "Service Type" string — ServiceRepository updates and SubmitServiceScreen write this;
-        // a legacy `types` array may be stale if only the string was updated.
         val typesString = data["servicetype"] as? String
         if (!typesString.isNullOrBlank()) {
-            return typesString.split(",").mapNotNull { typeName ->
-                try {
-                    ServiceType.valueOf(typeName.trim().uppercase().replace(" ", "_"))
-                } catch (e: IllegalArgumentException) {
-                    try {
-                        ServiceType.values().find { it.name.equals(typeName.trim(), ignoreCase = true) }
-                    } catch (e: Exception) {
-                        null
-                    }
-                }
-            }
+            return FirestoreServiceMapper.parseTypes(typesString)
         }
 
         val rawTypes = data["types"]
@@ -1771,17 +1769,7 @@ object ServiceManager {
             else -> emptyList()
         }
         if (typesList.isNotEmpty()) {
-            return typesList.mapNotNull { typeName ->
-                try {
-                    ServiceType.valueOf(typeName.trim().uppercase().replace(" ", "_"))
-                } catch (e: IllegalArgumentException) {
-                    try {
-                        ServiceType.values().find { it.name.equals(typeName, ignoreCase = true) }
-                    } catch (e: Exception) {
-                        null
-                    }
-                }
-            }
+            return typesList.mapNotNull { FirestoreServiceMapper.parseTypeToken(it) }
         }
 
         return emptyList()
@@ -1798,7 +1786,7 @@ object ServiceManager {
         // Try to get as comma-separated string (ServiceRepository format)
         val featuresString = data["features"] as? String
         if (!featuresString.isNullOrBlank()) {
-            return featuresString.split(",").map { it.trim() }
+            return FirestoreServiceMapper.parseFeatures(featuresString)
         }
         
         return emptyList()
@@ -1833,16 +1821,6 @@ object ServiceManager {
 
     // Helper function to parse service status with case-insensitive handling
     private fun parseServiceStatus(data: Map<String, Any?>): ServiceStatus {
-        val statusString = getFieldValue(data, "status", "state")
-        return try {
-            ServiceStatus.valueOf(statusString?.uppercase() ?: "PENDING")
-        } catch (e: IllegalArgumentException) {
-            try {
-                // Try case-insensitive match
-                ServiceStatus.values().find { it.name.equals(statusString, ignoreCase = true) } ?: ServiceStatus.PENDING
-            } catch (e: Exception) {
-                ServiceStatus.PENDING
-            }
-        }
+        return FirestoreServiceMapper.parseStatus(getFieldValue(data, "status", "state"))
     }
 }
