@@ -12,7 +12,6 @@ import androidx.navigation.NavController
 import com.philapp.psa2.model.Service
 import com.philapp.psa2.model.ServiceType
 import com.philapp.psa2.viewmodel.SearchViewModel
-import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.ArrowBack
@@ -23,11 +22,12 @@ import android.util.Log
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import com.philapp.psa2.ui.components.OfflineIndicatorBanner
 import com.philapp.psa2.ui.components.rememberNetworkConnectivity
+import com.philapp.psa2.utils.LocationFilter
+import com.philapp.psa2.utils.ServiceSearch
 
 @Composable
 fun ResultsScreen(
@@ -64,13 +64,13 @@ fun ResultsScreen(
                     Text(
                         text = when {
                             customSearch != null -> {
-                                if (location == "all") {
-                                    "Results for '$customSearch' (All Locations)"
-                                } else {
-                                    "Results for '$customSearch'"
+                                when (location) {
+                                    LocationFilter.ANYWHERE -> "Results for '$customSearch' (All Locations)"
+                                    LocationFilter.NEARBY -> "Results for '$customSearch' (Nearby)"
+                                    else -> "Results for '$customSearch'"
                                 }
                             }
-                            else -> type?.name?.replace("_", " ") ?: "All Services"
+                            else -> type?.getDisplayName() ?: "All Services"
                         },
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -101,7 +101,7 @@ fun ResultsScreen(
                         .padding(16.dp)
                 ) {
                     // Location search field - only show if not searching all locations
-                if (location != "all") {
+                if (!LocationFilter.isAnywhere(location) && !LocationFilter.isNearby(location)) {
                     OutlinedTextField(
                         value = locationText,
                         onValueChange = { newLocation -> 
@@ -138,10 +138,12 @@ fun ResultsScreen(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = if (!customSearch.isNullOrBlank()) {
-                                    "Searching all locations for '$customSearch'"
-                                } else {
-                                    "Searching all locations"
+                                text = when {
+                                    LocationFilter.isNearby(location) && !customSearch.isNullOrBlank() ->
+                                        "Showing nearest matches for '$customSearch'"
+                                    LocationFilter.isNearby(location) -> "Showing nearest services first"
+                                    !customSearch.isNullOrBlank() -> "Searching all locations for '$customSearch'"
+                                    else -> "Searching all locations"
                                 },
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -188,14 +190,24 @@ fun ResultsScreen(
                         }
                     }
                     services.isEmpty() -> {
+                        val suggestion = customSearch?.let { ServiceSearch.suggestedAlternative(it) }
                         Box(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(
-                                text = "No services found for this selection.",
-                                style = MaterialTheme.typography.bodyLarge
-                            )
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = "No services found for this selection.",
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                                if (!suggestion.isNullOrBlank()) {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = "Try searching for '$suggestion' instead.",
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                            }
                         }
                     }
                     else -> {
@@ -237,6 +249,9 @@ private fun ServiceCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
+            .semantics {
+                contentDescription = "${service.groupName} by ${service.organizationName}"
+            }
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -284,6 +299,27 @@ private fun ServiceCard(
             }
 
             Spacer(modifier = Modifier.height(8.dp))
+
+            if (service.types.isNotEmpty()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    service.types.take(3).forEach { serviceType ->
+                        AssistChip(
+                            onClick = { },
+                            label = {
+                                Text(
+                                    text = serviceType.getDisplayName(),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
             
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -312,7 +348,10 @@ private fun ServiceCard(
             Spacer(modifier = Modifier.height(12.dp))
             Button(
                 onClick = { navController.navigate("details/${service.id}") },
-                modifier = Modifier.align(Alignment.End)
+                modifier = Modifier
+                    .align(Alignment.End)
+                    .heightIn(min = 48.dp)
+                    .semantics { contentDescription = "More information about ${service.groupName}" }
             ) {
                 Text("More Info")
             }

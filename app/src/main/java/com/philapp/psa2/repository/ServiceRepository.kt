@@ -11,9 +11,9 @@ import com.philapp.psa2.model.ContactInfo
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.first
 import android.util.Log
 import java.util.NoSuchElementException
+import com.philapp.psa2.utils.FirestoreServiceMapper
 import com.philapp.psa2.utils.generateServiceId
 
 class ServiceRepository {
@@ -110,7 +110,7 @@ class ServiceRepository {
             serviceMap["Website URL"] = service.websiteUrl ?: ""
             
             // Canonical ID: derived from organisation + group name (must match Firestore doc ID)
-            val descriptiveId = generateServiceId(service.organizationName, service.groupName)
+            val descriptiveId = generateServiceId(service.organizationName, service.groupName, service.town)
             
             Log.d("ServiceRepository", "Adding new service: ${service.organizationName} - ${service.groupName}")
             Log.d("ServiceRepository", "Using descriptive ID: $descriptiveId")
@@ -195,25 +195,14 @@ class ServiceRepository {
                 location = data["Location Details"] as? String ?: "",
                 town = data["Town"] as? String ?: "",
                 description = data["Group Description"] as? String ?: "",
-                types = (data["Service Type"] as? String)?.split(",")?.mapNotNull { typeStr ->
-                    try {
-                        ServiceType.valueOf(typeStr.trim().uppercase().replace(" ", "_"))
-                    } catch (_: Exception) {
-                        Log.w("ServiceRepository", "Failed to parse service type: $typeStr")
-                        null
-                    }
-                } ?: listOf(),
-                features = (data["Features"] as? String)?.split(",")?.map { it.trim() } ?: listOf(),
+                types = FirestoreServiceMapper.parseTypes(data["Service Type"] as? String),
+                features = FirestoreServiceMapper.parseFeatures(data["Features"] as? String),
                 contact = ContactInfo(
                     phone = data["Contact Information"] as? String ?: "",
                     email = ""
                 ),
                 schedule = data["Session Times"] as? String,
-                status = when ((data["Status"] as? String)?.uppercase()) {
-                    "APPROVED" -> ServiceStatus.APPROVED
-                    "REJECTED" -> ServiceStatus.REJECTED
-                    else -> ServiceStatus.PENDING
-                },
+                status = FirestoreServiceMapper.parseStatus(data["Status"] as? String),
                 websiteUrl = data["Website URL"] as? String
             )
         } catch (e: Exception) {
@@ -248,39 +237,7 @@ class ServiceRepository {
                 .whereIn("Status", approvedStatusValues)
                 .get()
                 .await()
-            val services = snapshot.documents.mapNotNull { doc ->
-                try {
-                    val data = doc.data
-                    if (data != null) {
-                        Service(
-                            id = doc.id,
-                            organizationName = data["Organisation Name"] as? String ?: "",
-                            groupName = data["Group/Program Name"] as? String ?: "",
-                            location = data["Location Details"] as? String ?: "",
-                            town = data["Town"] as? String ?: "",
-                            description = data["Group Description"] as? String ?: "",
-                            types = (data["Service Type"] as? String)?.split(",")?.mapNotNull { typeStr ->
-                                try { 
-                                    ServiceType.valueOf(typeStr.trim().uppercase().replace(" ", "_")) 
-                                } catch (_: Exception) { 
-                                    Log.w("ServiceRepository", "Failed to parse service type: $typeStr")
-                                    null 
-                                }
-                            } ?: listOf(),
-                            features = (data["Features"] as? String)?.split(",")?.map { it.trim() } ?: listOf(),
-                            contact = ContactInfo(
-                                phone = data["Contact Information"] as? String ?: "",
-                                email = ""
-                            ),
-                            schedule = data["Session Times"] as? String,
-                            status = ServiceStatus.APPROVED
-                        )
-                    } else null
-                } catch (e: Exception) {
-                    Log.e("ServiceRepository", "Error converting document ${doc.id}", e)
-                    null
-                }
-            }
+            val services = snapshot.documents.mapNotNull { parseServiceFromFirestore(it) }
             emit(services)
         } catch (e: Exception) {
             Log.e("ServiceRepository", "Error getting approved services", e)
@@ -289,37 +246,45 @@ class ServiceRepository {
     }
 
     fun getServicesByType(type: ServiceType): Flow<List<Service>> = flow {
-        val snapshot = servicesCollection
-            .whereArrayContains("types", type)
-            .get()
-            .await()
-        val services = snapshot.documents.mapNotNull { doc ->
-            doc.toObject(Service::class.java)
+        try {
+            val snapshot = servicesCollection.get().await()
+            val services = snapshot.documents
+                .mapNotNull { parseServiceFromFirestore(it) }
+                .filter { type in it.types }
+            emit(services)
+        } catch (e: Exception) {
+            Log.e("ServiceRepository", "Error getting services by type", e)
+            emit(emptyList())
         }
-        emit(services)
     }
 
     fun getServicesByLocation(location: String): Flow<List<Service>> = flow {
-        val snapshot = servicesCollection
-            .whereGreaterThanOrEqualTo("location", location)
-            .whereLessThanOrEqualTo("location", location + '\uf8ff')
-            .get()
-            .await()
-        val services = snapshot.documents.mapNotNull { doc ->
-            doc.toObject(Service::class.java)
+        try {
+            val snapshot = servicesCollection.get().await()
+            val services = snapshot.documents
+                .mapNotNull { parseServiceFromFirestore(it) }
+                .filter {
+                    it.location.contains(location, ignoreCase = true) ||
+                        it.town.contains(location, ignoreCase = true)
+                }
+            emit(services)
+        } catch (e: Exception) {
+            Log.e("ServiceRepository", "Error getting services by location", e)
+            emit(emptyList())
         }
-        emit(services)
     }
 
     fun getServicesByStatus(status: ServiceStatus): Flow<List<Service>> = flow {
-        val snapshot = servicesCollection
-            .whereEqualTo("status", status)
-            .get()
-            .await()
-        val services = snapshot.documents.mapNotNull { doc ->
-            doc.toObject(Service::class.java)
+        try {
+            val snapshot = servicesCollection.get().await()
+            val services = snapshot.documents
+                .mapNotNull { parseServiceFromFirestore(it) }
+                .filter { it.status == status }
+            emit(services)
+        } catch (e: Exception) {
+            Log.e("ServiceRepository", "Error getting services by status", e)
+            emit(emptyList())
         }
-        emit(services)
     }
 
     fun getPendingServices(): Flow<List<Service>> = flow {
@@ -336,39 +301,7 @@ class ServiceRepository {
                 .get()
                 .await()
             
-            val services = snapshot.documents.mapNotNull { doc ->
-                try {
-                    val data = doc.data
-                    if (data != null) {
-                        Service(
-                            id = doc.id,
-                            organizationName = data["Organisation Name"] as? String ?: "",
-                            groupName = data["Group/Program Name"] as? String ?: "",
-                            location = data["Location Details"] as? String ?: "",
-                            town = data["Town"] as? String ?: "",
-                            description = data["Group Description"] as? String ?: "",
-                            types = (data["Service Type"] as? String)?.split(",")?.mapNotNull { typeStr ->
-                                try { 
-                                    ServiceType.valueOf(typeStr.trim().uppercase().replace(" ", "_")) 
-                                } catch (_: Exception) { 
-                                    Log.w("ServiceRepository", "Failed to parse service type: $typeStr")
-                                    null 
-                                }
-                            } ?: listOf(),
-                            features = (data["Features"] as? String)?.split(",")?.map { it.trim() } ?: listOf(),
-                            contact = ContactInfo(
-                                phone = data["Contact Information"] as? String ?: "",
-                                email = ""
-                            ),
-                            schedule = data["Session Times"] as? String,
-                            status = ServiceStatus.PENDING
-                        )
-                    } else null
-                } catch (e: Exception) {
-                    Log.e("ServiceRepository", "Error converting document ${doc.id}", e)
-                    null
-                }
-            }
+            val services = snapshot.documents.mapNotNull { parseServiceFromFirestore(it) }
             
             Log.d("ServiceRepository", "Retrieved ${services.size} pending services")
             emit(services)
@@ -468,44 +401,7 @@ class ServiceRepository {
 
     suspend fun getDuplicateServices(): List<List<Service>> {
         val snapshot = servicesCollection.get().await()
-        val services = snapshot.documents.mapNotNull { doc ->
-            try {
-                val data = doc.data
-                if (data != null) {
-                    Service(
-                        id = doc.id,
-                        organizationName = data["Organisation Name"] as? String ?: "",
-                        groupName = data["Group/Program Name"] as? String ?: "",
-                        location = data["Location Details"] as? String ?: "",
-                        town = data["Town"] as? String ?: "",
-                        description = data["Group Description"] as? String ?: "",
-                        types = (data["Service Type"] as? String)?.split(",")?.mapNotNull { typeStr ->
-                            try { 
-                                ServiceType.valueOf(typeStr.trim().uppercase().replace(" ", "_")) 
-                            } catch (_: Exception) { 
-                                Log.w("ServiceRepository", "Failed to parse service type: $typeStr")
-                                null 
-                            }
-                        } ?: listOf(),
-                        features = (data["Features"] as? String)?.split(",")?.map { it.trim() } ?: listOf(),
-                        contact = ContactInfo(
-                            phone = data["Contact Information"] as? String ?: "",
-                            email = ""
-                        ),
-                        schedule = data["Session Times"] as? String,
-                        status = when ((data["Status"] as? String)?.uppercase()) {
-                            "APPROVED" -> ServiceStatus.APPROVED
-                            "REJECTED" -> ServiceStatus.REJECTED
-                            else -> ServiceStatus.PENDING
-                        },
-                        websiteUrl = data["Website URL"] as? String
-                    )
-                } else null
-            } catch (e: Exception) {
-                Log.e("ServiceRepository", "Error converting document ${doc.id}", e)
-                null
-            }
-        }
+        val services = snapshot.documents.mapNotNull { parseServiceFromFirestore(it) }
         
         val grouped = services.groupBy { Triple(it.organizationName, it.groupName, it.location) }
         return grouped.values.filter { it.size > 1 }
@@ -541,7 +437,8 @@ class ServiceRepository {
                     }
                     
                     // Generate descriptive ID using just organization and group name
-                    val descriptiveId = generateServiceId(organizationName, groupName)
+                    val town = data["Town"] as? String ?: ""
+                    val descriptiveId = generateServiceId(organizationName, groupName, town)
                     Log.d("ServiceRepository", "Generated descriptive ID: $descriptiveId")
                     
                     // Only migrate if the ID is different
@@ -633,7 +530,8 @@ class ServiceRepository {
                 sampleServices.forEach { serviceData ->
                     val descriptiveId = generateServiceId(
                         serviceData["Organisation Name"] as String,
-                        serviceData["Group/Program Name"] as String
+                        serviceData["Group/Program Name"] as String,
+                        serviceData["Town"] as? String ?: ""
                     )
                     servicesCollection.document(descriptiveId).set(serviceData).await()
                     Log.d("ServiceRepository", "Added sample service with ID: $descriptiveId")
