@@ -15,3 +15,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "PSA2"
 include(":app")
+include(":servicescanner")

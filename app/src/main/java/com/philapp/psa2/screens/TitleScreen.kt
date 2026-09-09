@@ -3,7 +3,9 @@ package com.philapp.psa2.screens
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -37,6 +39,7 @@ fun TitleScreen(navController: NavController) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .verticalScroll(rememberScrollState())
                 .padding(32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
@@ -109,6 +112,24 @@ fun TitleScreen(navController: NavController) {
             ) {
                 Text(
                     text = "Enter App",
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 18.sp
+                    )
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            FilledTonalButton(
+                onClick = { navController.navigate("scanner") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .clip(RoundedCornerShape(14.dp))
+            ) {
+                Text(
+                    text = "Service Scanner",
                     style = MaterialTheme.typography.bodyLarge.copy(
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 18.sp

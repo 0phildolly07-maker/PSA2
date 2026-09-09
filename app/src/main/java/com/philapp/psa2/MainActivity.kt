@@ -31,6 +31,8 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.philapp.psa2.screens.LocationSelectionScreen
+import com.phild.servicescanner.ui.navigation.AppNavHost
+import com.phild.servicescanner.ui.theme.ServiceScannerTheme
 
 class MainActivity : ComponentActivity() {
     private lateinit var searchViewModel: SearchViewModel
@@ -72,6 +74,14 @@ class MainActivity : ComponentActivity() {
                     NavHost(navController = navController, startDestination = "title") {
                         composable("title") {
                             TitleScreen(navController = navController)
+                        }
+                        composable("scanner") {
+                            ServiceScannerTheme {
+                                AppNavHost(
+                                    modifier = Modifier.fillMaxSize(),
+                                    onExit = { navController.popBackStack() }
+                                )
+                            }
                         }
                         composable("home") {
                             HomeScreen(
