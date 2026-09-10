@@ -1,36 +1,56 @@
 package com.philapp.psa2.ui.theme
 
+import android.app.Activity
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.runtime.Composable
 import androidx.compose.material3.lightColorScheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
-
-// Define your custom colors
-private val LightGreen = Color(0xFFE8F5E9) // Light green background
-private val MediumGreen = Color(0xFFA5D6A7) // Medium green for surfaces
-private val DarkGreen = Color(0xFF2E7D32) // Darker green for text
-private val AccentRed = Color(0xFFE53935) // Red for highlights/accents
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 
 private val LightColorScheme = lightColorScheme(
     primary = DarkGreen,
     onPrimary = Color.White,
+    primaryContainer = SoftGreen,
+    onPrimaryContainer = ForestGreen,
     secondary = AccentRed,
     onSecondary = Color.White,
+    secondaryContainer = Color(0xFFFFDAD6),
+    onSecondaryContainer = Color(0xFF410002),
     tertiary = MediumGreen,
-    background = LightGreen,
-    surface = MediumGreen,
-    surfaceVariant = LightGreen,
-    onSurfaceVariant = DarkGreen
+    onTertiary = ForestGreen,
+    background = PaleMint,
+    onBackground = Ink,
+    surface = CardWhite,
+    onSurface = Ink,
+    surfaceVariant = SoftGreen,
+    onSurfaceVariant = MutedInk,
+    outline = OutlineGreen,
+    error = ErrorRed,
+    onError = Color.White,
+    errorContainer = Color(0xFFF9DEDC),
+    onErrorContainer = Color(0xFF410E0B)
 )
 
 @Composable
 fun PSATheme(
     content: @Composable () -> Unit
 ) {
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as Activity).window
+            window.statusBarColor = PaleMint.toArgb()
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = true
+        }
+    }
+
     MaterialTheme(
         colorScheme = LightColorScheme,
         typography = Typography,
+        shapes = PsaShapes,
         content = content
     )
 }
-

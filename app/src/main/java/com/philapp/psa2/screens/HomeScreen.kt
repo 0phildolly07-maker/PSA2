@@ -4,31 +4,64 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavController
-import com.philapp.psa2.viewmodel.SearchViewModel
 import androidx.core.content.ContextCompat
+import androidx.navigation.NavController
 import com.philapp.psa2.model.AreaList
+import com.philapp.psa2.ui.components.CategoryIconWell
 import com.philapp.psa2.ui.components.OfflineIndicatorBanner
+import com.philapp.psa2.ui.components.OtherSearchIcon
+import com.philapp.psa2.ui.components.cardTitle
+import com.philapp.psa2.ui.components.icon
+import com.philapp.psa2.ui.components.psaHomeTopAppBarColors
 import com.philapp.psa2.ui.components.rememberNetworkConnectivity
 import com.philapp.psa2.utils.LocationFilter
 import com.philapp.psa2.utils.isConnected
+import com.philapp.psa2.viewmodel.SearchViewModel
 
 enum class SupportType(val title: String, val description: String) {
     PEER_SUPPORT("Peer Support/Groups", "Connect with others who share similar experiences"),
@@ -49,8 +82,6 @@ fun SupportType.toServiceType(): String {
     return name
 }
 
-// Remove the local Lancashire_Areas list since we're now using the shared one
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
@@ -63,7 +94,6 @@ fun HomeScreen(
     val context = LocalContext.current
     val connectionStatus = rememberNetworkConnectivity().value
 
-    // Handle location permission
     var hasLocationPermission by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(
@@ -89,32 +119,46 @@ fun HomeScreen(
             searchViewModel.getUserLocation()
         }
     }
-    
+
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                onClick = { 
+                onClick = {
                     if (isConnected) {
-                        navController.navigate("add_service") 
+                        navController.navigate("add_service")
                     }
                 },
                 icon = { Icon(Icons.Default.Add, contentDescription = "Add a new service") },
-                text = { Text(if (isConnected) "Add New Service" else "Offline") },
-                containerColor = if (isConnected) 
-                    MaterialTheme.colorScheme.primaryContainer 
-                else 
+                text = { Text(if (isConnected) "Add service" else "Offline") },
+                containerColor = if (isConnected) {
+                    MaterialTheme.colorScheme.secondary
+                } else {
                     MaterialTheme.colorScheme.surfaceVariant
+                },
+                contentColor = if (isConnected) {
+                    MaterialTheme.colorScheme.onSecondary
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                }
             )
         },
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Support Services") },
+                title = {
+                    Text(
+                        "Support Services",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                },
+                colors = psaHomeTopAppBarColors(),
                 actions = {
                     IconButton(
                         onClick = { navController.navigate("admin") },
                         modifier = Modifier.semantics { contentDescription = "Open admin" }
                     ) {
-                        Text("Admin")
+                        Icon(Icons.Default.Lock, contentDescription = "Open admin")
                     }
                 }
             )
@@ -123,113 +167,123 @@ fun HomeScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(padding)
         ) {
-            // Offline indicator banner
             OfflineIndicatorBanner(connectionStatus = connectionStatus)
-            
+
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .padding(horizontal = 20.dp)
             ) {
-                // Header
                 Text(
-                text = if (showLocationInput) "Where are you looking?" else "What support are you looking for?",
-                style = MaterialTheme.typography.headlineMedium,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(bottom = 24.dp)
-            )
-
-            if (!showLocationInput) {
-                // Support Type Selection in 2 columns
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(SupportType.values()) { type ->
-                        SupportTypeCard(
-                            type = type,
-                            isSelected = selectedType == type,
-                            onClick = {
-                                selectedType = type
-                                showLocationInput = true
-                            }
-                        )
-                    }
-                    
-                    // Add "Other" option to the grid
-                    item {
-                        OtherOptionCard(
-                            isSelected = false,
-                            onClick = {
-                                navController.navigate("custom_search")
-                            }
-                        )
-                    }
-                }
-            } else {
-                // Location Input Screen
-                selectedType?.let { type ->
-                    Text(
-                        text = "Selected: ${type.title}",
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
-                }
-
-                LocationSelector(
-                    selectedLocation = selectedLocation,
-                    onLocationSelected = { location ->
-                        selectedLocation = location
-                        if (location == LocationFilter.NEARBY && !hasLocationPermission) {
-                            permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-                        } else if (location == LocationFilter.NEARBY) {
-                            searchViewModel.getUserLocation()
-                        }
+                    text = if (showLocationInput) {
+                        "Where are you looking?"
+                    } else {
+                        "What support are you looking for?"
                     },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 16.dp, bottom = 20.dp)
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    OutlinedButton(
-                        onClick = {
-                            showLocationInput = false
-                            selectedLocation = ""
-                        },
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(end = 8.dp)
+                if (!showLocationInput) {
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(2),
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(bottom = 96.dp)
                     ) {
-                        Text("Back")
+                        items(SupportType.entries) { type ->
+                            SupportTypeCard(
+                                type = type,
+                                isSelected = selectedType == type,
+                                onClick = {
+                                    selectedType = type
+                                    showLocationInput = true
+                                }
+                            )
+                        }
+
+                        item {
+                            OtherOptionCard(
+                                onClick = { navController.navigate("custom_search") }
+                            )
+                        }
+                    }
+                } else {
+                    selectedType?.let { type ->
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surface
+                            ),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                CategoryIconWell(icon = type.icon())
+                                Text(
+                                    text = type.title,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
                     }
 
-                    Button(
-                        onClick = {
-                            selectedType?.let { type ->
-                                navController.navigate("results/${type.toServiceType()}/$selectedLocation")
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    LocationSelector(
+                        selectedLocation = selectedLocation,
+                        onLocationSelected = { location ->
+                            selectedLocation = location
+                            if (location == LocationFilter.NEARBY && !hasLocationPermission) {
+                                permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                            } else if (location == LocationFilter.NEARBY) {
+                                searchViewModel.getUserLocation()
                             }
                         },
-                        enabled = selectedLocation.isNotBlank(),
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(start = 8.dp)
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Text("Search")
+                        OutlinedButton(
+                            onClick = {
+                                showLocationInput = false
+                                selectedLocation = ""
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(52.dp)
+                        ) {
+                            Text("Back")
+                        }
+
+                        Button(
+                            onClick = {
+                                selectedType?.let { type ->
+                                    navController.navigate("results/${type.toServiceType()}/$selectedLocation")
+                                }
+                            },
+                            enabled = selectedLocation.isNotBlank(),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(52.dp)
+                        ) {
+                            Text("Search")
+                        }
                     }
                 }
-            }
             }
         }
     }
@@ -246,30 +300,31 @@ private fun SupportTypeCard(
         onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
-            .height(120.dp)
+            .height(148.dp)
             .semantics { contentDescription = type.title },
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) 
-                MaterialTheme.colorScheme.primaryContainer 
-            else 
+            containerColor = if (isSelected) {
+                MaterialTheme.colorScheme.primaryContainer
+            } else {
                 MaterialTheme.colorScheme.surface
-        )
+            }
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(12.dp),
-            verticalArrangement = Arrangement.Center
+                .padding(16.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            CategoryIconWell(icon = type.icon())
+            Spacer(modifier = Modifier.height(12.dp))
             Text(
-                text = type.title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = type.description,
-                style = MaterialTheme.typography.bodySmall,
+                text = type.cardTitle(),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
@@ -280,39 +335,33 @@ private fun SupportTypeCard(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun OtherOptionCard(
-    isSelected: Boolean,
     onClick: () -> Unit
 ) {
     Card(
         onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
-            .height(120.dp)
+            .height(148.dp)
             .semantics { contentDescription = "Other, search for specific activities or services" },
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) 
-                MaterialTheme.colorScheme.primaryContainer 
-            else 
-                MaterialTheme.colorScheme.surface
-        )
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(12.dp),
-            verticalArrangement = Arrangement.Center
+                .padding(16.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            CategoryIconWell(icon = OtherSearchIcon)
+            Spacer(modifier = Modifier.height(12.dp))
             Text(
                 text = "Other",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "Search for specific activities or services",
-                style = MaterialTheme.typography.bodySmall,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center
             )
         }
     }
@@ -375,4 +424,3 @@ private fun LocationSelector(
         }
     }
 }
- 

@@ -3,6 +3,8 @@ package com.philapp.psa2.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,6 +19,7 @@ import com.philapp.psa2.model.ContactInfo
 import com.philapp.psa2.model.ServiceStatus
 import androidx.compose.ui.layout.Layout
 import com.philapp.psa2.model.AreaList
+import com.philapp.psa2.ui.components.psaInnerTopAppBarColors
 
 data class LocationDetails(
     val addressLine1: String = "",
@@ -116,28 +119,27 @@ fun AddServiceScreen(
 
     val scope = rememberCoroutineScope()
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-            .verticalScroll(rememberScrollState())
-    ) {
-        // Header
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            IconButton(onClick = { navController.navigateUp() }) {
-                Text("←")
-            }
-            Text(
-                "Add New Service",
-                style = MaterialTheme.typography.headlineMedium
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            TopAppBar(
+                title = { Text("Add New Service") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.navigateUp() }) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                colors = psaInnerTopAppBarColors()
             )
-            Box(modifier = Modifier.width(48.dp))
         }
-
-        Spacer(modifier = Modifier.height(24.dp))
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState())
+        ) {
 
         // Organization Information
         SectionHeader("Organization Information", true)
@@ -405,32 +407,33 @@ fun AddServiceScreen(
         }
 
         Spacer(modifier = Modifier.height(32.dp))
-    }
+        }
 
-    if (errorMessage != null) {
-        AlertDialog(
-            onDismissRequest = { errorMessage = null },
-            title = { Text("Error") },
-            text = { Text(errorMessage!!) },
-            confirmButton = {
-                TextButton(onClick = { errorMessage = null }) {
-                    Text("OK")
+        if (errorMessage != null) {
+            AlertDialog(
+                onDismissRequest = { errorMessage = null },
+                title = { Text("Error") },
+                text = { Text(errorMessage!!) },
+                confirmButton = {
+                    TextButton(onClick = { errorMessage = null }) {
+                        Text("OK")
+                    }
                 }
-            }
-        )
-    }
+            )
+        }
 
-    if (duplicateWarning != null) {
-        AlertDialog(
-            onDismissRequest = { duplicateWarning = null },
-            title = { Text("Duplicate Service") },
-            text = { Text(duplicateWarning!!) },
-            confirmButton = {
-                TextButton(onClick = { duplicateWarning = null }) {
-                    Text("OK")
+        if (duplicateWarning != null) {
+            AlertDialog(
+                onDismissRequest = { duplicateWarning = null },
+                title = { Text("Duplicate Service") },
+                text = { Text(duplicateWarning!!) },
+                confirmButton = {
+                    TextButton(onClick = { duplicateWarning = null }) {
+                        Text("OK")
+                    }
                 }
-            }
-        )
+            )
+        }
     }
 }
 

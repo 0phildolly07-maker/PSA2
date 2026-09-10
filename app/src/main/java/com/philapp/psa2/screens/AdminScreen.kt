@@ -17,6 +17,7 @@ import androidx.compose.foundation.clickable
 import java.text.SimpleDateFormat
 import java.util.*
 import com.philapp.psa2.viewmodel.AdminViewModel
+import com.philapp.psa2.ui.components.psaInnerTopAppBarColors
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.text.style.TextOverflow
@@ -195,6 +196,7 @@ fun AdminScreen(
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
                 title = { Text("Admin Panel") },
@@ -204,13 +206,13 @@ fun AdminScreen(
                     }
                 },
                 actions = {
-                    // Menu button to show/hide action buttons
                     IconButton(
                         onClick = { showActionButtons = !showActionButtons }
                     ) {
                         Icon(Icons.Default.MoreVert, contentDescription = "More Actions")
                     }
-                }
+                },
+                colors = psaInnerTopAppBarColors()
             )
         }
     ) { padding ->

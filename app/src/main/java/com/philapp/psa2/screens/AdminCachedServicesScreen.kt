@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.philapp.psa2.data.ServiceManager
 import com.philapp.psa2.model.Service
+import com.philapp.psa2.ui.components.psaInnerTopAppBarColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,6 +48,7 @@ fun AdminCachedServicesScreen(navController: NavController) {
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
                 title = { Text("Cached services (${cached.size})") },
@@ -54,7 +56,8 @@ fun AdminCachedServicesScreen(navController: NavController) {
                     IconButton(onClick = { navController.navigateUp() }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
-                }
+                },
+                colors = psaInnerTopAppBarColors()
             )
         }
     ) { padding ->
