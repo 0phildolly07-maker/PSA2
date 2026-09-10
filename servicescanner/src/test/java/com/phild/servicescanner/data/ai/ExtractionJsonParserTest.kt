@@ -19,7 +19,7 @@ class ExtractionJsonParserTest {
         val extraction = result.getOrThrow()
         val service = extraction.service
         assertEquals("Burnley Walking Group", service.serviceName)
-        assertEquals("Social Activity", service.category)
+        assertEquals("Social Activities", service.category)
         assertEquals("01282 123456", service.telephone)
         assertEquals("Walk Coordinator", service.contactName)
         assertEquals(listOf("Tuesday"), service.days)
@@ -102,6 +102,33 @@ class ExtractionJsonParserTest {
         assertEquals("07483356858", crafty.telephone)
         assertEquals(listOf("Monday"), crafty.days)
         assertTrue(extraction.multipleActivitiesDetected)
+    }
+
+    @Test
+    fun categoryArrayIsJoinedAndCanonicalized() {
+        val json = """
+            {
+              "serviceName": "Walking Group",
+              "category": ["Peer Support/Groups", "Social Activities", "Sport & Fitness"]
+            }
+        """.trimIndent()
+        val service = parser.parse(json).getOrThrow().service
+        assertEquals(
+            "Peer Support/Groups, Social Activities, Sport & Fitness",
+            service.category
+        )
+    }
+
+    @Test
+    fun legacyCategoryStringIsCanonicalized() {
+        val json = """
+            {
+              "serviceName": "Walking Group",
+              "category": "Social Activity"
+            }
+        """.trimIndent()
+        val service = parser.parse(json).getOrThrow().service
+        assertEquals("Social Activities", service.category)
     }
 
     @Test

@@ -5,7 +5,7 @@ object SampleExtractionJson {
     {
       "serviceName": "Burnley Walking Group",
       "description": "A friendly weekly walk for adults who want to get active and meet others.",
-      "category": "Social Activity",
+      "category": ["Social Activities"],
       "organisation": "Burnley Community Health",
       "venue": "Towneley Park Visitor Centre",
       "address": "Towneley Park, Burnley",
@@ -34,7 +34,7 @@ object SampleExtractionJson {
         {
           "serviceName": "Get crafty – arts and crafts",
           "description": null,
-          "category": "Community Activity",
+          "category": ["Community Interest Groups"],
           "organisation": "Red Rose Recovery",
           "venue": "St James Old School",
           "address": "Cannon Street, Accrington",
@@ -57,7 +57,7 @@ object SampleExtractionJson {
         {
           "serviceName": "Community café",
           "description": null,
-          "category": "Social Activity",
+          "category": ["Social Activities"],
           "organisation": "Red Rose Recovery",
           "venue": "Double Decker café",
           "address": "8-10 Church Street, Accrington",

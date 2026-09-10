@@ -18,7 +18,7 @@ object GeminiPrompt {
 
         Organise the information into the supplied structured schema.
 
-        The category should be selected from the supplied category list where the flyer provides enough information to make a reasonable classification.
+        Select every matching service type from the supplied category list where the flyer provides enough information to make a reasonable classification. A service may belong to more than one type.
 
         Do not use outside knowledge.
 
@@ -40,15 +40,16 @@ object GeminiPrompt {
         - description: Service Description
         - venue, address, postcode: Location Details (split where possible)
         - areaCovered: Town or area
-        - category: Service Type
+        - category: Service Type (array of all matching types)
         - contactName: Contact Name
         - email, website, telephone: contact details
         - times: Session Times
         - days: Days Available
         - frequency: how often it runs, for example Weekly, Fortnightly, Monthly, or One-off
 
-        Category / Service Type must be one of: ${ServiceCategories.all.joinToString(", ")}.
-        If a reasonable classification cannot be made from the flyer, use Other or null.
+        Category / Service Type must be an array of one or more of:
+        ${ServiceCategories.promptList}
+        Select every type that applies. If a reasonable classification cannot be made from the flyer, use ["Other"] or an empty array.
 
         If a field is missing, use null (or an empty array for days and uncertainFields).
 
@@ -96,15 +97,16 @@ object GeminiPrompt {
         - description: only if the timetable states what the session is
         - venue, address, postcode: split a single location line where possible
         - areaCovered: town or area from the address
-        - category: Service Type
+        - category: Service Type (array of all matching types)
         - contactName: facilitator or contact names as written
         - email, website, telephone: contact details
         - times: Session Times
         - days: the day column or heading for that cell, for example ["Monday"]
         - frequency: Weekly when the timetable is a weekly grid and does not say otherwise
 
-        Category / Service Type must be one of: ${ServiceCategories.all.joinToString(", ")}.
-        If a reasonable classification cannot be made, use Other or null.
+        Category / Service Type must be an array of one or more of:
+        ${ServiceCategories.promptList}
+        Select every type that applies. If a reasonable classification cannot be made, use ["Other"] or an empty array.
 
         If the timetable includes a staff or contact directory, match facilitator first names to that table and copy the matching telephone and email onto each activity.
         If two names are listed, keep both in contactName and use the first matched directory entry for telephone and email.

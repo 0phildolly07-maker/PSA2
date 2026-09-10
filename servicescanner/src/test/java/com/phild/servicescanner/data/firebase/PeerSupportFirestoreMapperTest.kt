@@ -80,7 +80,11 @@ class PeerSupportFirestoreMapperTest {
         )
         assertEquals(
             listOf("RECOVERY"),
-            PeerSupportFirestoreMapper.serviceTypes(ServiceCategories.SUBSTANCE_MISUSE_SUPPORT)
+            PeerSupportFirestoreMapper.serviceTypes("Substance Misuse Support")
+        )
+        assertEquals(
+            listOf("RECOVERY"),
+            PeerSupportFirestoreMapper.serviceTypes(ServiceCategories.RECOVERY)
         )
         assertEquals(
             listOf("EMPLOYMENT"),
@@ -99,6 +103,44 @@ class PeerSupportFirestoreMapperTest {
             PeerSupportFirestoreMapper.serviceTypes(ServiceCategories.COMMUNITY_ACTIVITY)
         )
         assertTrue(PeerSupportFirestoreMapper.serviceTypes(ServiceCategories.OTHER).isEmpty())
+        assertEquals(
+            listOf("PEER_SUPPORT"),
+            PeerSupportFirestoreMapper.serviceTypes(ServiceCategories.PEER_SUPPORT)
+        )
+        assertEquals(
+            listOf("SPORT_AND_FITNESS"),
+            PeerSupportFirestoreMapper.serviceTypes(ServiceCategories.SPORT_AND_FITNESS)
+        )
+        assertEquals(
+            listOf("SKILL_BUILDING"),
+            PeerSupportFirestoreMapper.serviceTypes(ServiceCategories.SKILL_BUILDING)
+        )
+        assertEquals(
+            listOf("HOUSING"),
+            PeerSupportFirestoreMapper.serviceTypes(ServiceCategories.HOUSING)
+        )
+        assertEquals(
+            listOf("FOOD_BANKS"),
+            PeerSupportFirestoreMapper.serviceTypes(ServiceCategories.FOOD_BANKS)
+        )
+    }
+
+    @Test
+    fun mapsMultipleSelectedServiceTypes() {
+        val service = ExtractedService(
+            organisation = "Red Rose Recovery",
+            serviceName = "Here & Now",
+            category = "Peer Support/Groups, Social Activities, Sport & Fitness"
+        )
+        val fields = PeerSupportFirestoreMapper.toFirestoreMap(service)!!
+        assertEquals(
+            "PEER_SUPPORT, SOCIAL, SPORT_AND_FITNESS",
+            fields[PeerSupportFirestoreMapper.FIELD_SERVICE_TYPE]
+        )
+        assertEquals(
+            listOf("PEER_SUPPORT", "SOCIAL", "SPORT_AND_FITNESS"),
+            fields[PeerSupportFirestoreMapper.FIELD_TYPES]
+        )
     }
 
     @Test

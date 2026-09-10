@@ -3,6 +3,7 @@ package com.phild.servicescanner.data.ai
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Base64
+import com.phild.servicescanner.domain.model.ServiceCategories
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
@@ -98,7 +99,17 @@ object GeminiRequestFactory {
         return JSONObject()
             .put("serviceName", nullableString)
             .put("description", JSONObject().put("type", "STRING").put("nullable", true))
-            .put("category", JSONObject().put("type", "STRING").put("nullable", true))
+            .put(
+                "category",
+                JSONObject()
+                    .put("type", "ARRAY")
+                    .put(
+                        "items",
+                        JSONObject()
+                            .put("type", "STRING")
+                            .put("enum", JSONArray(ServiceCategories.all))
+                    )
+            )
             .put("organisation", JSONObject().put("type", "STRING").put("nullable", true))
             .put("venue", JSONObject().put("type", "STRING").put("nullable", true))
             .put("address", JSONObject().put("type", "STRING").put("nullable", true))

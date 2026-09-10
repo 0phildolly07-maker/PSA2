@@ -17,6 +17,7 @@ class DocxDocumentGeneratorTest {
         val service = ExtractedService(
             serviceName = "Burnley Walking Group",
             description = "Weekly walk",
+            category = "Peer Support/Groups, Social Activities",
             postcode = null
         )
 
@@ -37,6 +38,7 @@ class DocxDocumentGeneratorTest {
             assertTrue(xml.contains("Location Details:"))
             assertTrue(xml.contains("Town:"))
             assertTrue(xml.contains("Service Type:"))
+            assertTrue(xml.contains("Peer Support/Groups, Social Activities"))
             assertTrue(xml.contains("Contact Name:"))
             assertTrue(xml.contains("Session Times:"))
             assertTrue(xml.contains("Days Available:"))

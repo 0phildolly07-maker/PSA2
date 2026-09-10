@@ -1,6 +1,7 @@
 package com.phild.servicescanner.data.document
 
 import com.phild.servicescanner.domain.model.ExtractedService
+import com.phild.servicescanner.domain.model.ServiceCategories
 
 object DocxTemplate {
 
@@ -38,7 +39,7 @@ object DocxTemplate {
                 ${labeled("Service Description:", service.description)}
                 ${labeled("Location Details:", locationDetails(service))}
                 ${labeled("Town:", service.areaCovered)}
-                ${labeled("Service Type:", service.category)}
+                ${labeled("Service Type:", ServiceCategories.formatSelected(ServiceCategories.parseSelected(service.category)) ?: service.category)}
                 ${labeled("Contact Name:", service.contactName)}
                 ${labeled("Email:", service.email)}
                 ${labeled("Website:", service.website)}

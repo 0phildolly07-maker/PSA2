@@ -93,7 +93,10 @@ class ServiceIdsTest {
 class FirestoreServiceMapperTest {
     @Test
     fun parsesDisplayNamesAndHousing() {
-        val types = FirestoreServiceMapper.parseTypes("Practical Support, Housing, Sport & Fitness")
+        val types = FirestoreServiceMapper.parseTypes(
+            "Peer Support/Groups, Practical Support, Housing, Sport & Fitness"
+        )
+        assertTrue(types.contains(ServiceType.PEER_SUPPORT))
         assertTrue(types.contains(ServiceType.PRACTICAL))
         assertTrue(types.contains(ServiceType.HOUSING))
         assertTrue(types.contains(ServiceType.SPORT_AND_FITNESS))

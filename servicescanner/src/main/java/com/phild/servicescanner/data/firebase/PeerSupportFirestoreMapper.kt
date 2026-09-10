@@ -90,8 +90,7 @@ object PeerSupportFirestoreMapper {
     }
 
     fun serviceTypes(category: String?): List<String> {
-        if (category.isNullOrBlank()) return emptyList()
-        return category.split(",", ";", "/")
+        return ServiceCategories.parseSelected(category)
             .mapNotNull { mapTypeToken(it) }
             .distinct()
     }
@@ -147,14 +146,18 @@ object PeerSupportFirestoreMapper {
             "HOUSING", "HOMELESSNESS", "HOMELESS" -> "HOUSING"
             "SKILL", "SKILLS", "SKILLBUILDING" -> "SKILL_BUILDING"
             "OTHER" -> null
-            else -> when (token) {
+            else -> when (ServiceCategories.canonicalize(token)) {
                 ServiceCategories.PEER_SUPPORT -> "PEER_SUPPORT"
                 ServiceCategories.SOCIAL_ACTIVITY -> "SOCIAL"
                 ServiceCategories.MENTAL_HEALTH_SUPPORT -> "MENTAL_HEALTH"
-                ServiceCategories.SUBSTANCE_MISUSE_SUPPORT -> "RECOVERY"
+                ServiceCategories.RECOVERY -> "RECOVERY"
+                ServiceCategories.SPORT_AND_FITNESS -> "SPORT_AND_FITNESS"
+                ServiceCategories.SKILL_BUILDING -> "SKILL_BUILDING"
                 ServiceCategories.EMPLOYMENT_VOLUNTEERING -> "EMPLOYMENT"
                 ServiceCategories.EDUCATION_TRAINING -> "EDUCATION"
                 ServiceCategories.PRACTICAL_SUPPORT -> "PRACTICAL"
+                ServiceCategories.HOUSING -> "HOUSING"
+                ServiceCategories.FOOD_BANKS -> "FOOD_BANKS"
                 ServiceCategories.COMMUNITY_ACTIVITY -> "COMMUNITY_INTEREST_GROUPS"
                 else -> null
             }

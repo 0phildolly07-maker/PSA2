@@ -7,7 +7,7 @@ object FirestoreServiceMapper {
 
     fun parseTypes(raw: String?): List<ServiceType> {
         if (raw.isNullOrBlank()) return emptyList()
-        return raw.split(",", ";", "/").mapNotNull { parseTypeToken(it) }.distinct()
+        return raw.split(",", ";").mapNotNull { parseTypeToken(it) }.distinct()
     }
 
     fun parseTypeToken(raw: String): ServiceType? {
@@ -30,6 +30,7 @@ object FirestoreServiceMapper {
             "SPORT", "SPORTS", "FITNESS", "SPORT_FITNESS" -> ServiceType.SPORT_AND_FITNESS
             "MENTALHEALTH", "MENTAL" -> ServiceType.MENTAL_HEALTH
             "PEERSUPPORT", "PEER_SUPPORT_GROUP", "PEER_SUPPORT_GROUPS" -> ServiceType.PEER_SUPPORT
+            "SOCIAL_ACTIVITY", "SOCIAL_ACTIVITIES" -> ServiceType.SOCIAL
             "FOOD", "FOODBANK", "FOOD_BANK" -> ServiceType.FOOD_BANKS
             "COMMUNITY", "COMMUNITY_INTEREST", "COMMUNITY_INTEREST_GROUP" -> ServiceType.COMMUNITY_INTEREST_GROUPS
             "SKILL", "SKILLS", "SKILLBUILDING" -> ServiceType.SKILL_BUILDING

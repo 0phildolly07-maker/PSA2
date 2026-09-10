@@ -3,6 +3,7 @@ package com.phild.servicescanner.data.ai
 import com.phild.servicescanner.domain.model.AppError
 import com.phild.servicescanner.domain.model.ExtractedService
 import com.phild.servicescanner.domain.model.ExtractionResult
+import com.phild.servicescanner.domain.model.ServiceCategories
 import com.phild.servicescanner.domain.repository.AiException
 import org.json.JSONArray
 import org.json.JSONException
@@ -53,7 +54,7 @@ class ExtractionJsonParser {
         val service = ExtractedService(
             serviceName = root.blankToNull("serviceName"),
             description = root.blankToNull("description"),
-            category = root.blankToNull("category"),
+            category = ServiceCategories.formatSelected(root.stringList("category")),
             organisation = root.blankToNull("organisation"),
             venue = root.blankToNull("venue"),
             address = root.blankToNull("address"),

@@ -66,6 +66,7 @@
     <string name="field_accessibility">Accessibility</string>
     <string name="field_additional_notes">Additional Notes</string>
     <string name="category_unspecified">Not specified</string>
+    <string name="category_select_hint">Select all that apply</string>
     <string name="error_no_internet">No internet connection. Please check your network and try again.</string>
     <string name="error_api_unavailable">The AI service is unavailable at the moment. Please try again shortly.</string>
     <string name="error_api_model_unavailable">The selected AI model is not available. The app tried another vision model.</string>

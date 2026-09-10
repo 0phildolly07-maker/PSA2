@@ -13,6 +13,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -35,6 +36,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.phild.servicescanner.R
 import com.phild.servicescanner.domain.model.ExtractedService
@@ -130,9 +132,9 @@ fun ReviewScreen(
                 needsReview = "description" in uncertain
             )
             CategoryDropdown(
-                selected = service.category,
+                selected = ServiceCategories.parseSelected(service.category),
                 needsReview = "category" in uncertain,
-                onSelected = { onServiceChange(service.copy(category = it.emptyToNull())) }
+                onSelected = { onServiceChange(service.copy(category = ServiceCategories.formatSelected(it))) }
             )
 
             FormSectionTitle(stringResource(R.string.section_location))
@@ -292,19 +294,16 @@ private fun DaysReviewField(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CategoryDropdown(
-    selected: String?,
+    selected: List<String>,
     needsReview: Boolean,
-    onSelected: (String) -> Unit
+    onSelected: (List<String>) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
     val options = remember(selected) {
-        val base = listOf("") + ServiceCategories.all
-        if (!selected.isNullOrBlank() && selected !in ServiceCategories.all) {
-            listOf("") + selected + ServiceCategories.all
-        } else {
-            base
-        }
+        val extras = selected.filter { it !in ServiceCategories.all }
+        extras + ServiceCategories.all
     }
+    val displayValue = ServiceCategories.formatSelected(selected).orEmpty()
 
     ExposedDropdownMenuBox(
         expanded = expanded,
@@ -314,19 +313,26 @@ private fun CategoryDropdown(
             .padding(bottom = 8.dp)
     ) {
         OutlinedTextField(
-            value = selected.orEmpty(),
+            value = displayValue,
             onValueChange = {},
             readOnly = true,
             label = { Text(stringResource(R.string.field_category)) },
+            placeholder = { Text(stringResource(R.string.category_unspecified)) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             modifier = Modifier
                 .menuAnchor(MenuAnchorType.PrimaryNotEditable)
                 .fillMaxWidth(),
+            minLines = 1,
+            maxLines = 3,
             isError = needsReview,
-            supportingText = if (needsReview) {
-                { Text(stringResource(R.string.please_check)) }
-            } else {
-                null
+            supportingText = {
+                Text(
+                    if (needsReview) {
+                        stringResource(R.string.please_check)
+                    } else {
+                        stringResource(R.string.category_select_hint)
+                    }
+                )
             }
         )
         ExposedDropdownMenu(
@@ -334,19 +340,32 @@ private fun CategoryDropdown(
             onDismissRequest = { expanded = false }
         ) {
             options.forEach { option ->
+                val checked = option in selected
+                val description = ServiceCategories.descriptionFor(option)
                 DropdownMenuItem(
                     text = {
-                        Text(
-                            if (option.isEmpty()) {
-                                stringResource(R.string.category_unspecified)
-                            } else {
-                                option
+                        Column {
+                            Text(option)
+                            if (!description.isNullOrBlank()) {
+                                Text(
+                                    text = description,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
+                                )
                             }
+                        }
+                    },
+                    leadingIcon = {
+                        Checkbox(
+                            checked = checked,
+                            onCheckedChange = null
                         )
                     },
                     onClick = {
-                        onSelected(option)
-                        expanded = false
+                        val next = if (checked) selected - option else selected + option
+                        onSelected(next)
                     }
                 )
             }
