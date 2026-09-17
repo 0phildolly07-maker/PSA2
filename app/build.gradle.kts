@@ -7,12 +7,12 @@ plugins {
 
 android {
     namespace = "com.philapp.psa2"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.philapp.psa2"
         minSdk = 24
-        targetSdk = 34
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0"
 

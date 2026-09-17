@@ -25,7 +25,7 @@ fun geminiApiKeyForBuildConfig(): String {
 
 android {
     namespace = "com.phild.servicescanner"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         minSdk = 24
