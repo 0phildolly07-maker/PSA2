@@ -23,18 +23,20 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
-import com.philapp.psa2.model.AreaList
 import com.philapp.psa2.utils.LocationFilter
+import com.philapp.psa2.viewmodel.SearchViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LocationSelectionScreen(
-    navController: NavController
+    navController: NavController,
+    searchViewModel: SearchViewModel
 ) {
     var customSearch by remember { mutableStateOf("") }
     var selectedLocation by remember { mutableStateOf("") }
     var locationExpanded by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val availableTowns by searchViewModel.availableTowns.collectAsState()
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -121,7 +123,7 @@ fun LocationSelectionScreen(
                             }
                         }
                     )
-                    AreaList.Lancashire_Areas.forEach { area ->
+                    availableTowns.forEach { area ->
                         DropdownMenuItem(
                             text = { Text(area) },
                             onClick = {

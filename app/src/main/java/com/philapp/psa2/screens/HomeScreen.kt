@@ -37,6 +37,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,7 +52,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
-import com.philapp.psa2.model.AreaList
 import com.philapp.psa2.ui.components.CategoryIconWell
 import com.philapp.psa2.ui.components.OfflineIndicatorBanner
 import com.philapp.psa2.ui.components.OtherSearchIcon
@@ -93,6 +93,7 @@ fun HomeScreen(
     var showLocationInput by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val connectionStatus = rememberNetworkConnectivity().value
+    val availableTowns by searchViewModel.availableTowns.collectAsState()
 
     var hasLocationPermission by remember {
         mutableStateOf(
@@ -240,6 +241,7 @@ fun HomeScreen(
 
                     LocationSelector(
                         selectedLocation = selectedLocation,
+                        towns = availableTowns,
                         onLocationSelected = { location ->
                             selectedLocation = location
                             if (location == LocationFilter.NEARBY && !hasLocationPermission) {
@@ -371,6 +373,7 @@ private fun OtherOptionCard(
 @Composable
 private fun LocationSelector(
     selectedLocation: String,
+    towns: List<String>,
     onLocationSelected: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -412,7 +415,7 @@ private fun LocationSelector(
                     expanded = false
                 }
             )
-            AreaList.Lancashire_Areas.forEach { area ->
+            towns.forEach { area ->
                 DropdownMenuItem(
                     text = { Text(area) },
                     onClick = {

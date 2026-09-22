@@ -16,7 +16,6 @@ import com.philapp.psa2.model.ServiceType
 import com.philapp.psa2.viewmodel.SearchViewModel
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
-import com.philapp.psa2.model.AreaList
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Icon
@@ -59,6 +58,7 @@ fun EditServiceScreen(
     var location by remember { mutableStateOf(locationDetails) }
     var selectedTown by remember { mutableStateOf(town) }
     var townExpanded by remember { mutableStateOf(false) }
+    val availableTowns by viewModel.availableTowns.collectAsState()
     var description by remember { mutableStateOf(service.description) }
     var schedule by remember { mutableStateOf(service.schedule ?: "") }
     var contactPhone by remember { mutableStateOf(service.contact?.phone ?: "") }
@@ -142,7 +142,7 @@ fun EditServiceScreen(
                     expanded = townExpanded,
                     onDismissRequest = { townExpanded = false }
                 ) {
-                    AreaList.Lancashire_Areas.forEach { area ->
+                    availableTowns.forEach { area ->
                         DropdownMenuItem(
                             text = { Text(area) },
                             onClick = {

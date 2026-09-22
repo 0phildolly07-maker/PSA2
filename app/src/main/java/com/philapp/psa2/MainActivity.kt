@@ -31,6 +31,8 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.philapp.psa2.screens.LocationSelectionScreen
+import com.phild.servicescanner.data.firebase.FirestoreTownsRepository
+import com.phild.servicescanner.data.geo.TownGeocoder
 import com.phild.servicescanner.ui.navigation.AppNavHost
 import com.phild.servicescanner.ui.theme.ServiceScannerTheme
 
@@ -43,7 +45,11 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         // Initialize repository
-        serviceRepository = ServiceRepository()
+        serviceRepository = ServiceRepository(
+            townsRepository = FirestoreTownsRepository(
+                geocoder = TownGeocoder(application)
+            )
+        )
 
         // Create ViewModelFactory
         val factory = viewModelFactory {
@@ -92,7 +98,10 @@ class MainActivity : ComponentActivity() {
 
                         // Add the missing custom_search route
                         composable("custom_search") {
-                            LocationSelectionScreen(navController = navController)
+                            LocationSelectionScreen(
+                                navController = navController,
+                                searchViewModel = searchViewModel
+                            )
                         }
 
                         composable(

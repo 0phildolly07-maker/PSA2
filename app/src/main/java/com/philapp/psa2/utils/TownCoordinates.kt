@@ -1,8 +1,12 @@
 package com.philapp.psa2.utils
 
 import android.location.Location
+import com.phild.servicescanner.domain.model.TownRecord
 
 object TownCoordinates {
+    @Volatile
+    private var extraCoordinates: Map<String, Pair<Double, Double>> = emptyMap()
+
     private val coordinates = mapOf(
         "accrington" to Pair(53.7534, -2.3638),
         "bacup" to Pair(53.7034, -2.2010),
@@ -20,8 +24,18 @@ object TownCoordinates {
         "lancashire wide" to Pair(53.7890, -2.2480)
     )
 
+    fun updateExtras(towns: List<TownRecord>) {
+        extraCoordinates = towns.mapNotNull { town ->
+            val lat = town.latitude
+            val lng = town.longitude
+            if (lat == null || lng == null) null
+            else town.normalizedName to Pair(lat, lng)
+        }.toMap()
+    }
+
     fun distanceKm(userLocation: Location, town: String): Float {
-        val coords = coordinates[town.trim().lowercase()] ?: return Float.MAX_VALUE
+        val key = town.trim().lowercase()
+        val coords = extraCoordinates[key] ?: coordinates[key] ?: return Float.MAX_VALUE
         val townLocation = Location("town").apply {
             latitude = coords.first
             longitude = coords.second

@@ -5,7 +5,10 @@ import com.phild.servicescanner.BuildConfig
 import com.phild.servicescanner.data.ai.GeminiAiRepository
 import com.phild.servicescanner.data.ai.MockAiRepository
 import com.phild.servicescanner.data.document.DocxDocumentGenerator
+import com.google.firebase.firestore.FirebaseFirestore
 import com.phild.servicescanner.data.firebase.FirestorePeerSupportRepository
+import com.phild.servicescanner.data.firebase.FirestoreTownsRepository
+import com.phild.servicescanner.data.geo.TownGeocoder
 import com.phild.servicescanner.data.local.ApiKeyMask
 import com.phild.servicescanner.data.local.GeminiApiKeyStore
 import com.phild.servicescanner.data.local.ImageStore
@@ -55,7 +58,14 @@ class AppContainer(context: Context) {
 
     val historyRepository: HistoryRepository = LocalHistoryRepository(appContext)
 
-    val peerSupportRepository: PeerSupportRepository = FirestorePeerSupportRepository()
+    val townsRepository: FirestoreTownsRepository = FirestoreTownsRepository(
+        firestore = FirebaseFirestore.getInstance(),
+        geocoder = TownGeocoder(appContext)
+    )
+
+    val peerSupportRepository: PeerSupportRepository = FirestorePeerSupportRepository(
+        townsRepository = townsRepository
+    )
 
     val templateAvailable: Boolean = true
 

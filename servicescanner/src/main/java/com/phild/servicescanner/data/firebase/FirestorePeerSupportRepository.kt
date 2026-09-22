@@ -7,7 +7,8 @@ import com.phild.servicescanner.domain.repository.PeerSupportRepository
 import kotlinx.coroutines.tasks.await
 
 class FirestorePeerSupportRepository(
-    private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
+    private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
+    private val townsRepository: FirestoreTownsRepository = FirestoreTownsRepository(firestore)
 ) : PeerSupportRepository {
 
     private val servicesCollection = firestore.collection(COLLECTION)
@@ -33,6 +34,7 @@ class FirestorePeerSupportRepository(
             val batch = firestore.batch()
             val usedIds = existingIds.toMutableSet()
             val usedKeys = existingKeys.toMutableSet()
+            val townsToUpsert = linkedSetOf<String>()
 
             for (service in services) {
                 val fields = PeerSupportFirestoreMapper.toFirestoreMap(service)
@@ -53,10 +55,14 @@ class FirestorePeerSupportRepository(
                 batch.set(servicesCollection.document(id), fields)
                 usedIds.add(id)
                 usedKeys.add(key)
+                if (town.isNotBlank()) {
+                    townsToUpsert.add(town)
+                }
                 uploaded++
             }
 
             if (uploaded > 0) {
+                townsRepository.enqueueUpserts(batch, townsToUpsert)
                 batch.commit().await()
             }
 

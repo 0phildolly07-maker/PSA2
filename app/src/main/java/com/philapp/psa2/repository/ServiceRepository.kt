@@ -15,8 +15,12 @@ import android.util.Log
 import java.util.NoSuchElementException
 import com.philapp.psa2.utils.FirestoreServiceMapper
 import com.philapp.psa2.utils.generateServiceId
+import com.phild.servicescanner.data.firebase.FirestoreTownsRepository
+import com.phild.servicescanner.domain.model.TownRecord
 
-class ServiceRepository {
+class ServiceRepository(
+    val townsRepository: FirestoreTownsRepository = FirestoreTownsRepository()
+) {
     private val db = FirebaseFirestore.getInstance()
     private val servicesCollection = db.collection("services")
 
@@ -117,6 +121,7 @@ class ServiceRepository {
             
             // Use set() with the descriptive ID instead of add()
             servicesCollection.document(descriptiveId).set(serviceMap).await()
+            upsertTownIfPresent(service.town, TownRecord.SOURCE_ADMIN)
             
             Log.d("ServiceRepository", "Service added successfully with ID: $descriptiveId")
             Result.success(descriptiveId)
@@ -144,6 +149,7 @@ class ServiceRepository {
         try {
             // Merge preserves other Firestore fields and matches documents created outside this app.
             servicesCollection.document(service.id).set(serviceMap, SetOptions.merge()).await()
+            upsertTownIfPresent(service.town, TownRecord.SOURCE_ADMIN)
             Log.d("ServiceRepository", "Successfully updated service: ${service.organizationName} - ${service.groupName}")
         } catch (e: Exception) {
             Log.e("ServiceRepository", "Error updating service", e)
@@ -316,10 +322,23 @@ class ServiceRepository {
             servicesCollection.document(serviceId)
                 .update("Status", newStatus.name)
                 .await()
+            if (newStatus == ServiceStatus.APPROVED) {
+                val service = getServiceById(serviceId).getOrNull()
+                upsertTownIfPresent(service?.town, TownRecord.SOURCE_ADMIN)
+            }
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e("ServiceRepository", "Error updating service status", e)
             Result.failure(e)
+        }
+    }
+
+    private suspend fun upsertTownIfPresent(town: String?, source: String) {
+        if (town.isNullOrBlank()) return
+        try {
+            townsRepository.upsertTown(town, source)
+        } catch (e: Exception) {
+            Log.w("ServiceRepository", "Unable to upsert town '$town': ${e.message}")
         }
     }
 

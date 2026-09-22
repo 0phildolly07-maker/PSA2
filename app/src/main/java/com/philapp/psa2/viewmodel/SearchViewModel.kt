@@ -11,11 +11,17 @@ import com.philapp.psa2.model.ContactInfo
 import com.philapp.psa2.model.Service
 import com.philapp.psa2.model.ServiceStatus
 import com.philapp.psa2.model.ServiceType
+import com.philapp.psa2.model.AreaList
 import com.philapp.psa2.repository.ServiceRepository
 import com.philapp.psa2.utils.LocationFilter
 import com.philapp.psa2.utils.ServiceSearch
 import com.philapp.psa2.utils.ServiceSort
+import com.philapp.psa2.utils.TownCoordinates
+import com.philapp.psa2.utils.TownListMerger
+import com.phild.servicescanner.domain.model.TownRecord
+import com.phild.servicescanner.domain.town.TownNormalizer
 import android.util.Log
+import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -33,6 +39,8 @@ class SearchViewModel(
     private val _services = MutableStateFlow<List<Service>>(emptyList())
     val services: StateFlow<List<Service>> = _services.asStateFlow()
 
+    private val _allServices = MutableStateFlow<List<Service>>(emptyList())
+
     private val fusedLocationClient = LocationServices.getFusedLocationProviderClient(application)
 
     private val _isLoading = MutableStateFlow(false)
@@ -46,9 +54,16 @@ class SearchViewModel(
     private val _statusUpdateState = MutableStateFlow<Result<Unit>?>(null)
     val statusUpdateState: StateFlow<Result<Unit>?> = _statusUpdateState.asStateFlow()
 
+    private val _availableTowns = MutableStateFlow(AreaList.Lancashire_Areas)
+    val availableTowns: StateFlow<List<String>> = _availableTowns.asStateFlow()
+
+    private val _townRecords = MutableStateFlow<List<TownRecord>>(emptyList())
+    private var townsListener: ListenerRegistration? = null
+
     init {
         loadServices()
         getUserLocation()
+        listenToTowns()
     }
 
     fun loadServices() {
@@ -68,8 +83,13 @@ class SearchViewModel(
                 }
 
                 ServiceManager.loadServicesLive(getApplication()) { services ->
+                    _allServices.value = services
                     _services.value = services
+                    refreshAvailableTowns()
                     _isLoading.value = false
+                    viewModelScope.launch {
+                        backfillApprovedTowns()
+                    }
                 }
             } catch (e: Exception) {
                 Log.e("SearchViewModel", "Error loading services", e)
@@ -81,6 +101,43 @@ class SearchViewModel(
 
     fun stopListening() {
         ServiceManager.stopListening()
+        townsListener?.remove()
+        townsListener = null
+    }
+
+    private fun listenToTowns() {
+        townsListener?.remove()
+        townsListener = serviceRepository.townsRepository.listen { towns ->
+            _townRecords.value = towns
+            TownCoordinates.updateExtras(towns)
+            refreshAvailableTowns()
+            viewModelScope.launch {
+                backfillApprovedTowns()
+            }
+        }
+    }
+
+    private fun refreshAvailableTowns() {
+        _availableTowns.value = TownListMerger.visibleTowns(
+            seedTowns = AreaList.Lancashire_Areas,
+            services = _allServices.value
+        )
+    }
+
+    private suspend fun backfillApprovedTowns() {
+        val existingSlugs = _townRecords.value.map { it.id }.toSet()
+        val missing = _allServices.value
+            .filter { it.status == ServiceStatus.APPROVED }
+            .mapNotNull { TownNormalizer.normalize(it.town) }
+            .distinctBy { it.slug }
+            .filter { it.slug !in existingSlugs }
+        missing.forEach { town ->
+            try {
+                serviceRepository.townsRepository.upsertTown(town.displayName, TownRecord.SOURCE_ADMIN)
+            } catch (e: Exception) {
+                Log.w("SearchViewModel", "Unable to backfill town '${town.displayName}': ${e.message}")
+            }
+        }
     }
 
     @SuppressLint("MissingPermission")
@@ -128,7 +185,9 @@ class SearchViewModel(
                         filtered.sortedWith(ServiceSort::compareByTownThenDay)
                     }
 
+                    _allServices.value = allServices
                     _services.value = sorted
+                    refreshAvailableTowns()
                     _isLoading.value = false
                 }
             } catch (e: Exception) {
@@ -189,6 +248,10 @@ class SearchViewModel(
                     _services.value = _services.value.map { service ->
                         if (service.id == serviceId) service.copy(status = newStatus) else service
                     }
+                    _allServices.value = _allServices.value.map { service ->
+                        if (service.id == serviceId) service.copy(status = newStatus) else service
+                    }
+                    refreshAvailableTowns()
                 }.onFailure { e ->
                     _error.value = e
                 }
@@ -219,6 +282,7 @@ class SearchViewModel(
         viewModelScope.launch {
             try {
                 var existingService = _services.value.find { it.id == serviceId }
+                    ?: _allServices.value.find { it.id == serviceId }
                 if (existingService == null) {
                     existingService = repository.getServiceById(serviceId).getOrNull()
                 }

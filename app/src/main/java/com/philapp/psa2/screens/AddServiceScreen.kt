@@ -18,7 +18,6 @@ import com.philapp.psa2.model.Service
 import com.philapp.psa2.model.ContactInfo
 import com.philapp.psa2.model.ServiceStatus
 import androidx.compose.ui.layout.Layout
-import com.philapp.psa2.model.AreaList
 import com.philapp.psa2.ui.components.psaInnerTopAppBarColors
 
 data class LocationDetails(
@@ -65,6 +64,7 @@ fun AddServiceScreen(
     var locationDetails by remember { mutableStateOf("") }
     var town by remember { mutableStateOf("") }
     var townExpanded by remember { mutableStateOf(false) }
+    val availableTowns by searchViewModel.availableTowns.collectAsState()
     var description by remember { mutableStateOf("") }
     var contactName by remember { mutableStateOf("") }
     var contactPhone by remember { mutableStateOf("") }
@@ -225,7 +225,7 @@ fun AddServiceScreen(
                 expanded = townExpanded,
                 onDismissRequest = { townExpanded = false }
             ) {
-                AreaList.Lancashire_Areas.forEach { area ->
+                availableTowns.forEach { area ->
                     DropdownMenuItem(
                         text = { Text(area) },
                         onClick = {

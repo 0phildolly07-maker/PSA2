@@ -39,7 +39,7 @@ object GeminiPrompt {
         - serviceName: Group/Program Name
         - description: Service Description
         - venue, address, postcode: Location Details (split where possible)
-        - areaCovered: Town or area
+        - areaCovered: a single town or area name only, not a full address
         - category: Service Type (array of all matching types)
         - contactName: Contact Name
         - email, website, telephone: contact details
@@ -96,7 +96,7 @@ object GeminiPrompt {
         - serviceName: Group/Program Name
         - description: only if the timetable states what the session is
         - venue, address, postcode: split a single location line where possible
-        - areaCovered: town or area from the address
+        - areaCovered: a single town or area name only from the address, not the full address
         - category: Service Type (array of all matching types)
         - contactName: facilitator or contact names as written
         - email, website, telephone: contact details
