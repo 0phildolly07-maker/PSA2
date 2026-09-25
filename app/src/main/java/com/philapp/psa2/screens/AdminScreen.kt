@@ -36,7 +36,6 @@ fun AdminScreen(
     val error by viewModel.error.collectAsState()
     val statusUpdateState by viewModel.statusUpdateState.collectAsState()
     val migrationState by viewModel.migrationState.collectAsState()
-    val firebaseCheckState by viewModel.firebaseCheckState.collectAsState()
     val firebaseServiceCount by viewModel.firebaseServiceCount.collectAsState()
     val duplicateAnalysis by viewModel.duplicateAnalysis.collectAsState()
     val detailedDuplicates by viewModel.detailedDuplicates.collectAsState()
@@ -85,17 +84,6 @@ fun AdminScreen(
         }?.onFailure { e ->
             snackbarHostState.showSnackbar("Migration failed: ${e.message}")
             viewModel.clearMigrationState()
-        }
-    }
-
-    // Show Firebase check feedback
-    LaunchedEffect(firebaseCheckState) {
-        firebaseCheckState?.onSuccess { message ->
-            snackbarHostState.showSnackbar("Firebase Check: $message")
-            viewModel.clearFirebaseCheckState()
-        }?.onFailure { e ->
-            snackbarHostState.showSnackbar("Firebase check failed: ${e.message}")
-            viewModel.clearFirebaseCheckState()
         }
     }
 
@@ -353,48 +341,7 @@ fun AdminScreen(
                                     }
                                     
                                     Spacer(modifier = Modifier.height(8.dp))
-                                    
-                                    // Second row of buttons
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        // Sync Services button
-                                        Button(
-                                            onClick = { 
-                                                searchViewModel.syncAllServicesWithFirebase()
-                                                showActionButtons = false
-                                            },
-                                            modifier = Modifier.weight(1f),
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = MaterialTheme.colorScheme.primary
-                                            )
-                                        ) {
-                                            Icon(Icons.Default.Sync, contentDescription = "Sync")
-                                            Spacer(modifier = Modifier.width(4.dp))
-                                            Text("Sync", maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                        }
-                                        
-                                        // Check Firebase button
-                                        Button(
-                                            onClick = { 
-                                                viewModel.checkAndPopulateFirebase()
-                                                showActionButtons = false
-                                            },
-                                            modifier = Modifier.weight(1f),
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = MaterialTheme.colorScheme.secondary
-                                            )
-                                        ) {
-                                            Icon(Icons.Default.Info, contentDescription = "Check")
-                                            Spacer(modifier = Modifier.width(4.dp))
-                                            Text("Check", maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                        }
-                                    }
-                                    
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    
-                                    // Third row - view local JSON cache (read-only)
+
                                     OutlinedButton(
                                         onClick = {
                                             navController.navigate("admin_cached_services")
@@ -405,24 +352,6 @@ fun AdminScreen(
                                         Icon(Icons.Default.Storage, contentDescription = null)
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Text("View cached services")
-                                    }
-
-                                    Spacer(modifier = Modifier.height(8.dp))
-
-                                    // Fourth row - Replace Firebase button (full width due to destructive nature)
-                                    Button(
-                                        onClick = { 
-                                            searchViewModel.replaceFirebaseWithHardcodedServices()
-                                            showActionButtons = false
-                                        },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = MaterialTheme.colorScheme.error
-                                        )
-                                    ) {
-                                        Icon(Icons.Default.Delete, contentDescription = "Replace Firebase")
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text("Replace Firebase")
                                     }
                                 }
                             }

@@ -315,55 +315,6 @@ class SearchViewModel(
         }
     }
 
-    fun syncAllServicesWithFirebase() {
-        viewModelScope.launch {
-            try {
-                _isLoading.value = true
-                _error.value = null
-                val existingServices = mutableListOf<Service>()
-                serviceRepository.getAllServices().collect { services ->
-                    existingServices.clear()
-                    existingServices.addAll(services)
-                }
-                val missingServices = ServiceManager.getHardcodedServices().filter { hardcodedService ->
-                    existingServices.none { existingService ->
-                        existingService.organizationName.equals(hardcodedService.organizationName, ignoreCase = true) &&
-                            existingService.groupName.equals(hardcodedService.groupName, ignoreCase = true) &&
-                            existingService.location.equals(hardcodedService.location, ignoreCase = true)
-                    }
-                }
-                missingServices.forEach { service ->
-                    repository.addService(service)
-                }
-            } catch (e: Exception) {
-                _error.value = e
-            } finally {
-                _isLoading.value = false
-            }
-        }
-    }
-
-    fun replaceFirebaseWithHardcodedServices() {
-        viewModelScope.launch {
-            try {
-                _isLoading.value = true
-                _error.value = null
-                val clearResult = serviceRepository.clearAllServices()
-                clearResult.onSuccess {
-                    ServiceManager.getHardcodedServices().forEach { service ->
-                        repository.addService(service)
-                    }
-                }.onFailure { e ->
-                    _error.value = e
-                }
-            } catch (e: Exception) {
-                _error.value = e
-            } finally {
-                _isLoading.value = false
-            }
-        }
-    }
-
     suspend fun addService(service: Service) {
         val result = serviceRepository.addService(service)
         result.onFailure { throw it }
