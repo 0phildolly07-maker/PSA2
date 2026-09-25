@@ -33,7 +33,7 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles("consumer-rules.pro")
         buildConfigField("String", "GEMINI_API_KEY", "\"${geminiApiKeyForBuildConfig()}\"")
-        buildConfigField("String", "VERSION_NAME", "\"1.0\"")
+        buildConfigField("String", "VERSION_NAME", "\"2\"")
     }
 
     buildTypes {
